@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}My Django Project{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{% static 'Codelingo/main.css' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href=" {% static 'Codelingo/assets/favicon/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'Codelingo/assets/favicon/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'Codelingo/assets/favicon/favicon-16x16.png' %}">
+    <link rel="manifest" href="{% static 'Codelingo/assets/favicon/site.webmanifest' %}">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white">
+  <div class="container-fluid">
+    <div class="navbar-brand">
+      <img id="logo" src="{% static 'Codelingo/assets/Codelingo.svg' %}" alt="Logo" width="100" height="32" class="d-inline-block">
+      <h1 id="logo-title" class="d-inline align-middle">Codelingo</h1>
+    </div>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ml-auto">
+          {% for button in buttons %}
+            <li class="nav-item mb-2">
+              <a class="btn btn-dark btn-lg mt-3" href="{{ button.link }}"><strong>{{ button.name }}</strong></a>
+            </li>
+          {% endfor %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<body class="bg-light">
+    {% block content %}
+    {% endblock %}
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>
