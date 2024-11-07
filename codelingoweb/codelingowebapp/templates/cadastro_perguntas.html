@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 class="text-center mt-5 mb-4">{{ title }}</h1>
+
+<form method="post" action="/cadastro-perguntas">
+    {% csrf_token %}
+
+    <div class="card shadow-lg rounded-lg mb-4">
+        <div class="card-body">
+            <div class="form-group">
+                <label for="question-text" class="font-weight-bold">Texto da Pergunta</label>
+                <input type="text" class="form-control" id="question-text" name="question-text" placeholder="Insira a pergunta" required>
+            </div>
+
+            <!-- Botões para selecionar o nível de dificuldade com cores -->
+            <div class="form-group mt-4">
+                <label><strong>Selecione o Nível de Dificuldade:</strong></label>
+                <div class="btn-group w-100" role="group" aria-label="Nível de Dificuldade">
+                    <button type="button" class="btn btn-outline-success w-33 py-2" id="iniciate" onclick="selectDifficulty('Iniciante')"><strong>Iniciante</strong></button>
+                    <button type="button" class="btn btn-outline-warning w-33 py-2" id="intermediate" onclick="selectDifficulty('Intermediário')"><strong>Intermediário</strong></button>
+                    <button type="button" class="btn btn-outline-danger w-33 py-2" id="advanced" onclick="selectDifficulty('Avançado')"><strong>Avançado</strong></button>
+                </div>
+                <!-- Campo oculto para armazenar o nível selecionado -->
+                <input type="hidden" id="difficulty" name="difficulty">
+            </div>
+
+            <!-- Respostas 1 e 2 em colunas -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer1" class="font-weight-bold">Resposta 1</label>
+                        <input type="text" class="form-control" id="answer1" name="answer1" placeholder="Insira a resposta 1" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer2" class="font-weight-bold">Resposta 2</label>
+                        <input type="text" class="form-control" id="answer2" name="answer2" placeholder="Insira a resposta 2" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Respostas 3 e 4 em colunas -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer3" class="font-weight-bold">Resposta 3</label>
+                        <input type="text" class="form-control" id="answer3" name="answer3" placeholder="Insira a resposta 3" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer4" class="font-weight-bold">Resposta 4</label>
+                        <input type="text" class="form-control" id="answer4" name="answer4" placeholder="Insira a resposta 4" required>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success btn-lg px-4 py-2"><strong>Cadastrar Pergunta</strong></button>
+    </div>
+</form>
+
+<script>
+    // Função para selecionar o nível de dificuldade
+    function selectDifficulty(level) {
+        document.getElementById('difficulty').value = level;
+
+        // Remover a classe 'active' de todos os botões
+        document.getElementById('iniciate').classList.remove('active');
+        document.getElementById('intermediate').classList.remove('active');
+        document.getElementById('advanced').classList.remove('active');
+
+        // Adicionar a classe 'active' ao botão selecionado
+        if (level === 'Iniciante') {
+            document.getElementById('iniciate').classList.add('active');
+        } else if (level === 'Intermediário') {
+            document.getElementById('intermediate').classList.add('active');
+        } else if (level === 'Avançado') {
+            document.getElementById('advanced').classList.add('active');
+        }
+    }
+</script>
+
+{% endblock %}

@@ -4806,3 +4806,5 @@
 /codelingo/Scripts/pythonw.exe
 /codelingo/Scripts/sqlformat.exe
 /codelingo/pyvenv.cfg
+__pycache__/
+*.pyc

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<!-- Título da Página -->
+<div class="container mt-5">
+    <h1 class="text-center mb-4" style="color: #2c3e50;">{{ title }}</h1>
+
+    <!-- Linha com o tempo restante e o contador de perguntas -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <h5 class="text-muted mb-0">
+            <i class="bi bi-stopwatch" style="font-size: 1.5rem;"></i>
+            Tempo restante: <span id="timer" class="text-danger" style="font-weight: bold;">180</span> segundos
+        </h5>
+        <h5 class="text-muted mb-0">
+            Pergunta <span id="question-counter">1</span> de {{ questions|length }}
+        </h5>
+    </div>
+
+    <!-- Cartão com Pergunta e Respostas -->
+    <div class="card shadow-lg mt-4" style="border-radius: 15px; border: 1px solid #ccc;">
+        <div class="card-header bg-primary text-white" style="border-top-left-radius: 15px; border-top-right-radius: 15px;">
+            <h5 class="mb-0" id="question-text" style="font-weight: bold; font-size: 1.25rem;">{{ questions.0.question }}</h5>
+        </div>
+        <div class="card-body" style="padding: 30px;">
+            <div class="row" id="answers-list">
+                {% for answer in questions.0.answers %}
+                <div class="col-md-6 mb-2">
+                    <button type="button" class="btn btn-outline-primary w-100" style="height: 50px; font-size: 1rem; border-radius: 10px; transition: all 0.3s ease;">
+                        <strong>{{ answer }}</strong>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Script JavaScript para Lógica de Perguntas e Temporizador -->
+    <script>
+        var questions = {{ questions|safe }}; // Passando todas as perguntas para o JavaScript
+        var currentQuestionIndex = 0; // Iniciar pela primeira pergunta
+        var timeLeft = 180;
+        var timerElement = document.getElementById("timer");
+
+        // Função para atualizar a pergunta e as respostas
+        function updateQuestion() {
+            if (currentQuestionIndex < questions.length) {
+                var question = questions[currentQuestionIndex];
+                document.getElementById("question-text").innerText = question.question;
+                var answersList = document.getElementById("answers-list");
+                answersList.innerHTML = ""; // Limpar as respostas antigas
+
+                // Adicionar novas respostas
+                question.answers.forEach(function(answer) {
+                    var answerButton = document.createElement("button");
+                    answerButton.type = "button";
+                    answerButton.className = "btn btn-outline-primary w-100 mb-2";
+                    answerButton.innerText = answer;
+                    answerButton.style.cssText = "height: 50px; font-size: 1rem; border-radius: 10px; transition: all 0.3s ease;";
+                    var colDiv = document.createElement("div");
+                    colDiv.className = "col-md-6 mb-2";
+                    colDiv.appendChild(answerButton);
+                    answersList.appendChild(colDiv);
+                });
+
+                // Atualizar o contador de perguntas
+                document.getElementById("question-counter").innerText = currentQuestionIndex + 1;
+            }
+        }
+
+        // Temporizador
+        var countdown = setInterval(function() {
+            if (timeLeft <= 0) {
+                // Trocar para a próxima pergunta
+                currentQuestionIndex++;
+                alert("Fim do tempo! Clique em OK para a próxima pergunta.");
+                if (currentQuestionIndex < questions.length) {
+                    updateQuestion(); // Atualizar pergunta
+                    timeLeft = 180; // Resetar o temporizador para a próxima pergunta
+                } else {
+                    clearInterval(countdown);
+                    timerElement.textContent = "Fim das perguntas!";
+                }
+            } else {
+                timerElement.textContent = timeLeft;
+            }
+            timeLeft -= 1;
+        }, 1000);
+
+        // Inicializar a primeira pergunta
+        updateQuestion();
+    </script>
+</div>
+
+{% endblock %}

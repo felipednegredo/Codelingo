@@ -39,3 +39,8 @@ nav {
 .nav-item {
     margin: 0.5rem;
 }
+
+.custom-btn-size {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.9rem;
+}

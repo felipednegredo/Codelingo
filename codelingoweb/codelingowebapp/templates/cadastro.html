@@ -5,27 +5,38 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container bg-light mt-3">
-    <div class="row">
-        <div class="col">
-            <h1 class="text-center">{{ title }}</h1>
+<div class="container bg-light mt-5 p-4 rounded shadow-sm">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="text-center mb-4" style="font-size: 2rem; font-weight: bold; color: #2c3e50;">{{ title }}</h1>
+
             <div class="form-container">
-            <div class="form">
-            <h2 class="text-center">{{ description }}</h2>
-                {% for forms in forms %}
-                    <label for="{{ forms.id }}"><strong>{{ forms.label }}</strong></label>
-                    <input type="{{ forms.type }}" class="form-control" id="{{ forms.id }}" name="{{ forms.name }}" placeholder="{{ forms.placeholder }}" required>
-                {% endfor %}
-                <div id="options-div" class="d-flex justify-content-between">
-                    {% if options|length == 1 %}
-                        <a class="btn btn-dark btn-lg mt-3 mx-auto" href="{{ options.0.link }}"><strong>{{ options.0.name }}</strong></a>
-                    {% else %}
-                        {% for options in options %}
-                            <a class="btn btn-dark btn-lg mt-3" href="{{ options.link }}"><strong>{{ options.name }}</strong></a>
-                        {% endfor %}
-                    {% endif %}
+                <div class="form">
+                    <h2 class="text-center mb-4" style="color: #34495e; font-size: 1.5rem;">{{ description }}</h2>
+
+                    <!-- Formulários dinâmicos -->
+                    {% for form in forms %}
+                        <div class="form-group mb-3">
+                            <label for="{{ form.id }}" class="form-label"><strong>{{ form.label }}</strong></label>
+                            <input type="{{ form.type }}" class="form-control" id="{{ form.id }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
+                        </div>
+                    {% endfor %}
+
+                    <!-- Opções de botão -->
+                    <div id="options-div" class="d-flex justify-content-between flex-wrap">
+                        {% if options|length == 1 %}
+                            <a class="btn btn-dark btn-lg mt-3 mx-auto" href="{{ options.0.link }}">
+                                <strong>{{ options.0.name }}</strong>
+                            </a>
+                        {% else %}
+                            {% for option in options %}
+                                <a class="btn btn-dark btn-lg mt-3" href="{{ option.link }}">
+                                    <strong>{{ option.name }}</strong>
+                                </a>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
     </div>

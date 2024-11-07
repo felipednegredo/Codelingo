@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <h1 class="text-center mb-4" style="font-size: 2.5rem; font-weight: bold; color: #2c3e50;">Ranking da Turma</h1>
+
+    <div class="list-group">
+        <div class="d-flex justify-content-between align-items-center py-2 px-3 bg-light rounded-top">
+            <p class="text-left mb-0" style="font-weight: bold; font-size: 1.2rem;">Aluno</p>
+            <p class="text-right mb-0" style="font-weight: bold; font-size: 1.2rem;">Nota</p>
+        </div>
+
+        {% for user in ranking %}
+        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-3 border-bottom">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center" style="width: 40px; height: 40px; font-size: 1.1rem; font-weight: bold;">
+                    {{ user.name|slice:":1" }}
+                </div>
+                <span class="ml-3">{{ user.name }}</span>
+            </div>
+            <span class="font-weight-bold"><strong>{{ user.score }}</strong></span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

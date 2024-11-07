@@ -12,4 +12,12 @@ urlpatterns = [
     path('login', views.login, name='login'),
 
     path('home', views.home, name='home'),
+
+    path('ranking', views.ranking, name='ranking'),
+
+    path('relatorio', views.relatorio, name='relatorio'),
+
+    path('quiz', views.quiz, name='quiz'),
+
+    path('cadastro-perguntas', views.cadastro_perguntas, name='cadastro-perguntas'),
 ]

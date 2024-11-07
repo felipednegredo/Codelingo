@@ -5,22 +5,30 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container bg-light mt-3">
-    <div class="row">
-        <div class="col">
-            <h1 class="text-center">{{ title }}</h1>
+<div class="container bg-light mt-5 p-5 rounded shadow-sm">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="text-center mb-4" style="font-size: 2rem; color: #2c3e50; font-weight: bold;">{{ title }}</h1>
+
             <div class="form-container">
-            <div class="form">
-                {% for forms in forms %}
-                    <label for="{{ forms.id }}"><strong>{{ forms.label }}</strong></label>
-                    <input type="{{ forms.type }}" class="form-control" id="{{ forms.id }}" name="{{ forms.name }}" placeholder="{{ forms.placeholder }}" required>
-                {% endfor %}
-                <div id="options-div" class="d-flex justify-content-between">
-                    {% for options in options %}
-                        <a class="btn btn-dark btn-lg mt-3" href="{{ options.link }}"><strong>{{ options.name }}</strong></a>
-                   {% endfor %}
+                <div class="form">
+                    <!-- Loop de formulários -->
+                    {% for form in forms %}
+                        <div class="form-group mb-4">
+                            <label for="{{ form.id }}" class="form-label"><strong>{{ form.label }}</strong></label>
+                            <input type="{{ form.type }}" class="form-control" id="{{ form.id }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
+                        </div>
+                    {% endfor %}
+
+                    <!-- Botões de opções -->
+                    <div id="options-div" class="d-flex flex-wrap justify-content-between mt-4">
+                        {% for option in options %}
+                            <a class="btn btn-dark btn-lg mt-3 w-100 w-md-auto" href="{{ option.link }}">
+                                <strong>{{ option.name }}</strong>
+                            </a>
+                        {% endfor %}
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
     </div>
