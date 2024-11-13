@@ -11,23 +11,24 @@
             <h1 class="text-center mb-4" style="font-size: 2rem; color: #2c3e50; font-weight: bold;">{{ title }}</h1>
 
             <div class="form-container">
-                <div class="form">
-                    <!-- Loop de formulários -->
-                    {% for form in forms %}
-                        <div class="form-group mb-4">
-                            <label for="{{ form.id }}" class="form-label"><strong>{{ form.label }}</strong></label>
-                            <input type="{{ form.type }}" class="form-control" id="{{ form.id }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
-                        </div>
-                    {% endfor %}
-
-                    <!-- Botões de opções -->
-                    <div id="options-div" class="d-flex flex-wrap justify-content-between mt-4">
-                        {% for option in options %}
-                            <a class="btn btn-dark btn-lg mt-3 w-100 w-md-auto" href="{{ option.link }}">
-                                <strong>{{ option.name }}</strong>
-                            </a>
-                        {% endfor %}
+                <form method="post" action="/login" class="form">
+                    {% csrf_token %}
+                    <div class="form-group mb-4">
+                        <label for="id_username" class="form-label"><strong>E-mail</strong></label>
+                        <input type="text" name="username" id="id_username" class="form-control">
                     </div>
+                    <div class="form-group mb-4">
+                        <label for="id_password" class="form-label"><strong>Senha</strong></label>
+                        <input type="password" name="password" id="id_password" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-lg mt-3 w-100 w-md-auto">
+                        <strong>Login</strong>
+                    </button>
+                </form>
+                <div id="options-div" class="d-flex flex-wrap justify-content-between mt-4">
+                    <a class="btn btn-dark btn-lg mt-3 w-100 w-md-auto" href="/cadastro">
+                        <strong>Cadastrar</strong>
+                    </a>
                 </div>
             </div>
         </div>

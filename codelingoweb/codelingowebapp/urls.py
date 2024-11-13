@@ -9,7 +9,7 @@ urlpatterns = [
     path('cadastro-professor', views.cadastro_professor, name='cadastro-professor'),
 
     path('cadastro-aluno', views.cadastro_aluno, name='cadastro-aluno'),
-    path('login', views.login, name='login'),
+    path('login', views.login_view, name='login'),
 
     path('home', views.home, name='home'),
 
@@ -18,6 +18,8 @@ urlpatterns = [
     path('relatorio', views.relatorio, name='relatorio'),
 
     path('quiz', views.quiz, name='quiz'),
+
+    path('logout/', views.logout_view, name='logout'),
 
     path('cadastro-perguntas', views.cadastro_perguntas, name='cadastro-perguntas'),
 ]
