@@ -1,5 +1,5 @@
 from django import forms
-from .models import CustomUser
+from .models import CustomUser, Question
 
 class ProfessorSignUpForm(forms.ModelForm):
     Senha = forms.CharField(label='Senha', widget=forms.PasswordInput)
@@ -31,3 +31,8 @@ class AlunoSignUpForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+class QuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = ('question_text', 'answers', 'correct_answer')

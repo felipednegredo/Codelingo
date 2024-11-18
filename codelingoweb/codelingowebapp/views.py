@@ -6,14 +6,22 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.contrib.auth import logout
 
 
-from .forms import ProfessorSignUpForm, AlunoSignUpForm
+from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
 
 logger = logging.getLogger(__name__)
 
 @login_required(login_url='/login')
+
 def home(request):
+    if request.user.is_professor:  # Assuming staff users are professors
+        return redirect('home-professor')
+    else:
+        return redirect('home-aluno')
+
+def home_aluno(request):
     context = {
         'title': 'Home',
         'trails': [
@@ -22,7 +30,7 @@ def home(request):
             {'name': 'Trilha 3', 'link': '/trilha-3', 'description': 'Trilha 3 é uma trilha de teste'},
         ],
         'buttons': [
-            {'name': 'Logout', 'link': '{% url \'logout\' %}'},
+            {'name': 'Logout', 'link': '/login'},
             {'name': 'Ranking', 'link': '/ranking'},
             {'name': 'Progresso', 'link': '/progresso'}
         ]
@@ -30,7 +38,17 @@ def home(request):
 
     return render(request, 'home.html', context)
 
-from django.contrib.auth import logout
+def home_professor(request):
+    context = {
+        'title': 'Home',
+        'buttons': [
+            {'name': 'Logout', 'link': '/login'},
+            {'name': 'Gerar Relatorio', 'link': '/relatorio'},
+            {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'}
+        ]
+    }
+
+    return render(request, 'home.html', context)
 
 def logout_view(request):
     logout(request)
@@ -68,10 +86,30 @@ def cadastro_professor(request):
     if request.method == 'POST':
         form = ProfessorSignUpForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            logger.info(f'Professor {user.username} cadastrado com sucesso.')
-            return redirect('home')
+            email = form.cleaned_data.get('Email')
+            nome = form.cleaned_data.get('Nome')
+            senha = form.cleaned_data.get('Senha')
+
+            # Check if Email is unique
+            if email and get_user_model().objects.filter(email=email).exists():
+                messages.error(request, 'Email already exists. Please choose a different Email.')
+            else:
+                try:
+                    user = get_user_model().objects.create_user(
+                        username=email,  # Use Email as username
+                        email=email,
+                        password=senha,
+                        first_name=nome.split()[0],
+                        last_name=' '.join(nome.split()[1:]),
+                        is_professor=True,
+                        Email=email,
+                        Nome=nome
+                    )
+                    auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                    logger.info(f'Professor {user.username} cadastrado com sucesso.')
+                    return redirect('home-professor')
+                except IntegrityError:
+                    messages.error(request, 'An error occurred while creating the user. Please try again.')
     else:
         form = ProfessorSignUpForm()
     return render(request, 'cadastro.html', {
@@ -90,13 +128,32 @@ def cadastro_aluno(request):
     if request.method == 'POST':
         form = AlunoSignUpForm(request.POST)
         if form.is_valid():
-            try:
-                user = form.save()
-                auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-                logger.info(f'Aluno {user.username} cadastrado com sucesso.')
-                return redirect('home')
-            except IntegrityError:
-                messages.error(request, 'Username already exists. Please choose a different username.')
+            email = form.cleaned_data.get('Email')
+            matricula = form.cleaned_data.get('Matricula')
+            nome = form.cleaned_data.get('Nome')
+            senha = form.cleaned_data.get('Senha')
+
+            # Check if Email is unique
+            if email and get_user_model().objects.filter(email=email).exists():
+                messages.error(request, 'Email already exists. Please choose a different Email.')
+            else:
+                try:
+                    user = get_user_model().objects.create_user(
+                        username=matricula,  # Use Matricula as username
+                        email=email,
+                        password=senha,
+                        first_name=nome.split()[0],
+                        last_name=' '.join(nome.split()[1:]),
+                        is_aluno=True,
+                        Matricula=matricula,
+                        Email=email,
+                        Nome=nome
+                    )
+                    auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                    logger.info(f'Aluno {user.username} cadastrado com sucesso.')
+                    return redirect('home-aluno')
+                except IntegrityError:
+                    messages.error(request, 'An error occurred while creating the user. Please try again.')
     else:
         form = AlunoSignUpForm()
     return render(request, 'cadastro.html', {
@@ -110,7 +167,6 @@ def cadastro_aluno(request):
             {'name': 'Tipo de Cadastro', 'link': '/cadastro'}
         ]
     })
-
 def ranking(request):
     context = {
         'title': 'Ranking',
@@ -171,6 +227,17 @@ def quiz(request):
     return render(request, 'quiz.html', context)
 
 def cadastro_perguntas(request):
+    if request.method == 'POST':
+        form = QuestionForm(request.POST)
+        print(form)
+        if form.is_valid():
+            question = form.cleaned_data.get('question')
+            answers = form.cleaned_data.get('answers')
+            correct = form.cleaned_data.get('correct')
+            print(f'Question: {question}')
+            print(f'Answers: {answers}')
+            print(f'Correct: {correct}')
+            messages.success(request, 'Pergunta cadastrada com sucesso')
     context = {
         'title': 'Cadastrar Perguntas',
         'buttons': [
