@@ -34,6 +34,7 @@
         {% if user.is_authenticated %}
           <li class="nav-item mb-2 d-flex align-items-center">
               <span class="navbar-text mr-3">Logado como: <strong>{{ user.first_name }}</strong> (<em>{{ user.is_aluno|yesno:"Aluno,Professor" }}</em>)</span>
+              <a class="btn btn-dark btn-sm mt-3" href="{% url 'logout' %}"><strong>Logout</strong></a>
           </li>
         {% endif %}
       </ul>

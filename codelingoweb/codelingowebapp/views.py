@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.contrib.auth import logout
+from .decorators import professor_required, aluno_required
 
 
 from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
@@ -14,13 +15,14 @@ from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
 logger = logging.getLogger(__name__)
 
 @login_required(login_url='/login')
-
 def home(request):
     if request.user.is_professor:  # Assuming staff users are professors
         return redirect('home-professor')
     else:
         return redirect('home-aluno')
 
+@login_required(login_url='/login')
+@aluno_required
 def home_aluno(request):
     context = {
         'title': 'Home',
@@ -30,7 +32,6 @@ def home_aluno(request):
             {'name': 'Trilha 3', 'link': '/trilha-3', 'description': 'Trilha 3 é uma trilha de teste'},
         ],
         'buttons': [
-            {'name': 'Logout', 'link': '/login'},
             {'name': 'Ranking', 'link': '/ranking'},
             {'name': 'Progresso', 'link': '/progresso'}
         ]
@@ -38,21 +39,18 @@ def home_aluno(request):
 
     return render(request, 'home.html', context)
 
+@login_required(login_url='/login')
+@professor_required
 def home_professor(request):
     context = {
         'title': 'Home',
         'buttons': [
-            {'name': 'Logout', 'link': '/login'},
             {'name': 'Gerar Relatorio', 'link': '/relatorio'},
             {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'}
         ]
     }
 
     return render(request, 'home.html', context)
-
-def logout_view(request):
-    logout(request)
-    return redirect('login')
 
 def cadastro(request):
     context = {
@@ -82,6 +80,7 @@ def login_view(request):
         else:
             messages.error(request, 'Usuário ou senha inválidos')
     return render(request, 'login.html', {'title': 'Login'})
+
 def cadastro_professor(request):
     if request.method == 'POST':
         form = ProfessorSignUpForm(request.POST)
@@ -167,6 +166,9 @@ def cadastro_aluno(request):
             {'name': 'Tipo de Cadastro', 'link': '/cadastro'}
         ]
     })
+
+@login_required(login_url='/login')
+@aluno_required
 def ranking(request):
     context = {
         'title': 'Ranking',
@@ -183,13 +185,15 @@ def ranking(request):
             {'name': 'Aluno 10', 'score': 10, 'id': 10},
         ],
         'buttons': [
-            {'name': 'Logout', 'link': '/login'},
             {'name': 'Progresso', 'link': '/progresso'},
             {'name': 'Home', 'link': '/home'}
         ]
     }
     return render(request, 'ranking.html', context)
 
+
+@login_required(login_url='/login')
+@professor_required
 def relatorio(request):
     context = {
         'title': 'Relatório',
@@ -206,12 +210,14 @@ def relatorio(request):
             {'name': 'Aluno 10', 'score': 10, 'id': 10},
         ],
         'buttons': [
-            {'name': 'Logout', 'link': '/login'},
-            {'name': 'Home', 'link': '/home'}
+            {'name': 'Home', 'link': '/home'},
+            {'name': 'Quiz', 'link': '/quiz'}
         ]
     }
     return render(request, 'relatorio.html', context)
 
+@login_required(login_url='/login')
+@aluno_required
 def quiz(request):
     context = {
         'title': 'Quiz',
@@ -220,12 +226,14 @@ def quiz(request):
             {'question': 'Qual a capital do Acre?', 'answers': ['Brasília', 'Rio Branco', 'São Paulo', 'Curitiba'], 'correct': 1},
         ],
         'buttons': [
-            {'name': 'Logout', 'link': '/login'},
-            {'name': 'Home', 'link': '/home'}
+            {'name': 'Home', 'link': '/home-aluno'},
+            {'name': 'Ranking', 'link': '/ranking'}
         ]
     }
     return render(request, 'quiz.html', context)
 
+@login_required(login_url='/login')
+@professor_required
 def cadastro_perguntas(request):
     if request.method == 'POST':
         form = QuestionForm(request.POST)
@@ -241,8 +249,8 @@ def cadastro_perguntas(request):
     context = {
         'title': 'Cadastrar Perguntas',
         'buttons': [
-            {'name': 'Logout', 'link': '/login'},
-            {'name': 'Home', 'link': '/home'}
+            {'name': 'Home', 'link': '/home-professor'},
+            {'name': 'Relatório', 'link': '/relatorio'}
         ]
     }
     return render(request, 'cadastro_perguntas.html', context)
