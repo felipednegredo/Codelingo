@@ -7,9 +7,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.contrib.auth import logout
+from django.template.defaultfilters import random
+from django.http import JsonResponse
+
 from .decorators import professor_required, aluno_required
-
-
+from .models import Question, Trail, TrailPhase, TrailQuestion
 from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
 
 logger = logging.getLogger(__name__)
@@ -26,11 +28,6 @@ def home(request):
 def home_aluno(request):
     context = {
         'title': 'Home',
-        'trails': [
-            {'name': 'Trilha 1', 'link': '/trilha-1', 'description': 'Trilha 1 é uma trilha de teste'},
-            {'name': 'Trilha 2', 'link': '/trilha-2', 'description': 'Trilha 2 é uma trilha de teste'},
-            {'name': 'Trilha 3', 'link': '/trilha-3', 'description': 'Trilha 3 é uma trilha de teste'},
-        ],
         'buttons': [
             {'name': 'Ranking', 'link': '/ranking'},
             {'name': 'Progresso', 'link': '/progresso'}
@@ -46,7 +43,8 @@ def home_professor(request):
         'title': 'Home',
         'buttons': [
             {'name': 'Gerar Relatorio', 'link': '/relatorio'},
-            {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'}
+            {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'},
+            {'name': 'Cadastrar Trilha', 'link': '/cadastro_trilha'}
         ]
     }
 
@@ -235,22 +233,109 @@ def quiz(request):
 @login_required(login_url='/login')
 @professor_required
 def cadastro_perguntas(request):
+    message = None
+    message_type = None
     if request.method == 'POST':
         form = QuestionForm(request.POST)
-        print(form)
         if form.is_valid():
-            question = form.cleaned_data.get('question')
-            answers = form.cleaned_data.get('answers')
-            correct = form.cleaned_data.get('correct')
-            print(f'Question: {question}')
-            print(f'Answers: {answers}')
-            print(f'Correct: {correct}')
-            messages.success(request, 'Pergunta cadastrada com sucesso')
+            form.save()
+            logger.info(f'Pergunta {form.cleaned_data["question_text"]} cadastrada com sucesso.')
+            message = 'Pergunta cadastrada com sucesso.'
+            message_type = 'success'
+        else:
+            message = 'Ocorreu um erro ao cadastrar a pergunta. Por favor, tente novamente.'
+            message_type = 'error'
+    else:
+        form = QuestionForm()
     context = {
         'title': 'Cadastrar Perguntas',
+        'form': form,
+        'message': message,
+        'message_type': message_type,
         'buttons': [
             {'name': 'Home', 'link': '/home-professor'},
-            {'name': 'Relatório', 'link': '/relatorio'}
+            {'name': 'Relatório', 'link': '/relatorio'},
+            {'name': 'Editar Trilha', 'link': '/cadastro_trilha'}
         ]
     }
     return render(request, 'cadastro_perguntas.html', context)
+
+def get_questions(request):
+    questions = Question.objects.all().values('id', 'text')
+    return JsonResponse(list(questions), safe=False)
+@login_required(login_url='/login')
+@professor_required
+def cadastro_trilha(request):
+    if request.method == 'POST':
+        trail_name = request.POST.get('trail_name')
+        trail_description = request.POST.get('trail_description')
+        question_mode = request.POST.get('question_mode')
+        phases = []
+
+        if question_mode == 'manual':
+            for phase_number in range(1, 6):
+                phase = []
+                for question_number in range(1, 5):
+                    question_id = request.POST.get(f'question_{phase_number}_{question_number}')
+                    if question_id:
+                        try:
+                            question = Question.objects.get(id=question_id)
+                            phase.append(question)
+                        except Question.DoesNotExist:
+                            messages.error(request, f'Question with id {question_id} does not exist.')
+                            return redirect('cadastro_trilha')
+                phases.append(phase)
+        else:
+            questions = list(Question.objects.all())
+            random.shuffle(questions)
+            for phase_number in range(1, 6):
+                phase = questions[(phase_number-1)*4:phase_number*4]
+                phases.append(phase)
+
+        # Save the trail and its phases to the database
+        trail = Trail.objects.create(name=trail_name, description=trail_description)
+        for phase in phases:
+            trail_phase = TrailPhase.objects.create(trail=trail)
+            for question in phase:
+                TrailQuestion.objects.create(phase=trail_phase, question=question)
+
+        messages.success(request, 'Trilha cadastrada com sucesso.')
+        return redirect('home-professor')
+
+    questions = Question.objects.all()
+    context = {
+        'title': 'Cadastrar Trilha',
+        'buttons': [
+            {'name': 'Home', 'link': '/home-professor'},
+            {'name': 'Relatório', 'link': '/relatorio'},
+            {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'}
+        ],
+        'questions': questions,
+        'range': range(1, 6)
+    }
+    return render(request, 'cadastro_trilha.html', context)
+
+def get_questions(request):
+    questions = Question.objects.all().values('id', 'question_text')
+    return JsonResponse(list(questions), safe=False)
+
+def get_question(request):
+    question_id = request.GET.get('question_id')
+    if question_id:
+        try:
+            question = Question.objects.get(id=question_id)
+            data = {
+                'id': question.id,
+                'text': question.question_text,
+                'option1': question.option1,
+                'option2': question.option2,
+                'option3': question.option3,
+                'option4': question.option4,
+                'correct_option': question.correct_option,
+                'difficulty': question.difficulty
+            }
+            return JsonResponse(data)
+        except Question.DoesNotExist:
+            return JsonResponse({'error': 'Question not found'}, status=404)
+    else:
+        return JsonResponse({'error': 'No question_id provided'}, status=400)

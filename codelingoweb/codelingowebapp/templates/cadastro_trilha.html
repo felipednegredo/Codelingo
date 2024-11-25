@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 class="text-center mt-5 mb-4">{{ title }}</h1>
+
+<form method="post" action="/cadastrar_trilha" onsubmit="return validateTrailForm()">
+    {% csrf_token %}
+    <div class="card shadow-lg rounded-lg mb-4" style="margin: 1.5rem">
+        <div class="card-body">
+            <div class="form-group">
+                <label for="trail-name" class="font-weight-bold">Nome da Trilha</label>
+                <input type="text" class="form-control" id="trail-name" name="trail_name" placeholder="Insira o nome da trilha" required>
+                <label for="trail-description" class="font-weight-bold">Descrição da Trilha</label>
+                <textarea class="form-control" id="trail-description" name="trail_description" placeholder="Insira a descrição da trilha" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="font-weight-bold">Modo de Adição de Perguntas</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="question_mode" id="manual" value="manual" checked onclick="toggleQuestionMode()">
+                    <label class="form-check-label" for="manual">Manual</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="question_mode" id="random" value="random" onclick="toggleQuestionMode()">
+                    <label class="form-check-label" for="random">Aleatório</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="manual-mode" class="card shadow-lg rounded-lg mb-4" style="margin: 1.5rem">
+        <div class="card-body">
+            <div class="form-group">
+                <label for="phase-name" class="font-weight-bold">Nome da Fase</label>
+                <input type="text" class="form-control" id="phase-name" name="phase_name" placeholder="Insira o nome da fase" required>
+            </div>
+
+            <div class="form-group mt-4">
+                <label for="phase-description" class="font-weight-bold">Descrição da Fase</label>
+                <textarea class="form-control" id="phase-description" name="phase_description" rows="3" placeholder="Insira a descrição da fase" required></textarea>
+            </div>
+        </div>
+
+        {% for i in range %}
+        <div class="card-body">
+            <label for="question-select-{{ i }}" class="font-weight-bold">Selecione a Pergunta {{ i }}</label>
+            <select class="form-control custom-select" id="question-select-{{ i }}" name="question_select_{{ i }}" onchange="loadAnswers(this.value, {{ i }})">
+                <option value="">Selecione uma pergunta</option>
+            </select>
+            <button type="button" class="btn btn-link" onclick="toggleQuestionDetails({{ i }})">Minimizar</button>
+            <div id="question-details-{{ i }}" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mt-3">
+                            <label for="answer1-{{ i }}" class="font-weight-bold">Resposta 1</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="answer1-{{ i }}" name="option1_{{ i }}" placeholder="Insira a resposta 1" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mt-3">
+                            <label for="answer2-{{ i }}" class="font-weight-bold">Resposta 2</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="answer2-{{ i }}" name="option2_{{ i }}" placeholder="Insira a resposta 2" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mt-3">
+                            <label for="answer3-{{ i }}" class="font-weight-bold">Resposta 3</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="answer3-{{ i }}" name="option3_{{ i }}" placeholder="Insira a resposta 3" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mt-3">
+                            <label for="answer4-{{ i }}" class="font-weight-bold">Resposta 4</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="answer4-{{ i }}" name="option4_{{ i }}" placeholder="Insira a resposta 4" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="random-mode" class="card shadow-lg rounded-lg mb-4" style="margin: 1.5rem; display: none;">
+        <div class="card-body">
+            <div class="form-group">
+                <label for="phase-name-random" class="font-weight-bold">Nome da Fase</label>
+                <input type="text" class="form-control" id="phase-name-random" name="phase_name_random" placeholder="Insira o nome da fase" required>
+            </div>
+
+            <div class="form-group mt-4">
+                <label for="phase-description-random" class="font-weight-bold">Descrição da Fase</label>
+                <textarea class="form-control" id="phase-description-random" name="phase_description_random" rows="3" placeholder="Insira a descrição da fase" required></textarea>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <button type="button" class="btn btn-primary" onclick="loadRandomQuestion()">Selecionar Pergunta Aleatória</button>
+            <label class="font-weight-bold">Pergunta Selecionada</label>
+            <p id="random-question-text">Pergunta aleatória selecionada</p>
+        </div>
+
+        <div class="card-body" id="answers-container-random">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer1-random" class="font-weight-bold">Resposta 1</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="answer1-random" name="option1_random" placeholder="Insira a resposta 1" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer2-random" class="font-weight-bold">Resposta 2</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="answer2-random" name="option2_random" placeholder="Insira a resposta 2" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer3-random" class="font-weight-bold">Resposta 3</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="answer3-random" name="option3_random" placeholder="Insira a resposta 3" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="answer4-random" class="font-weight-bold">Resposta 4</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="answer4-random" name="option4_random" placeholder="Insira a resposta 4" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success btn-lg px-4 py-2"><strong>Atualizar Trilha</strong></button>
+    </div>
+</form>
+
+<script>
+    function loadQuestions() {
+        fetch('/get_questions')
+            .then(response => response.json())
+            .then(data => {
+                for (let i = 1; i <= 5; i++) {
+                    const questionSelect = document.getElementById(`question-select-${i}`);
+                    questionSelect.innerHTML = '<option value="">Selecione uma pergunta</option>';
+                    data.forEach(question => {
+                        const option = document.createElement('option');
+                        option.value = question.id;
+                        option.textContent = question.question_text;
+                        questionSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function loadAnswers(questionId, index) {
+        if (questionId) {
+            fetch(`/get_question/?question_id=${questionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error(data.error);
+                    } else {
+                        document.getElementById(`answer1-${index}`).value = data.option1;
+                        document.getElementById(`answer2-${index}`).value = data.option2;
+                        document.getElementById(`answer3-${index}`).value = data.option3;
+                        document.getElementById(`answer4-${index}`).value = data.option4;
+                        document.getElementById(`question-details-${index}`).style.display = 'block';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        } else {
+            document.getElementById(`question-details-${index}`).style.display = 'none';
+        }
+    }
+
+    function loadRandomQuestion() {
+        fetch('/get_questions')
+            .then(response => response.json())
+            .then(data => {
+                const randomQuestion = data[Math.floor(Math.random() * data.length)];
+                document.getElementById('random-question-text').textContent = randomQuestion.text;
+                loadAnswers(randomQuestion.id, 'random');
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function toggleQuestionMode() {
+        const manualMode = document.getElementById('manual-mode');
+        const randomMode = document.getElementById('random-mode');
+        const manualRadio = document.getElementById('manual');
+        const randomRadio = document.getElementById('random');
+
+        if (manualRadio.checked) {
+            manualMode.style.display = 'block';
+            randomMode.style.display = 'none';
+        } else if (randomRadio.checked) {
+            manualMode.style.display = 'none';
+            randomMode.style.display = 'block';
+        }
+    }
+
+    function toggleQuestionDetails(index) {
+        const details = document.getElementById(`question-details-${index}`);
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+        } else {
+            details.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleQuestionMode();
+        loadQuestions();
+    });
+</script>
+
+{% endblock %}
