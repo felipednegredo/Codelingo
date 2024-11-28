@@ -91,7 +91,7 @@ DATABASES = {
         'HOST': 'LOCALHOST',
         'PORT': '5432',  # Ensure the port is specified
         'OPTIONS': {
-            'client_encoding': 'UTF8',
+             'client_encoding': 'UTF8',
         },
         'CONN_MAX_AGE': 600,  # Keep the connection open for 10 minutes
     }

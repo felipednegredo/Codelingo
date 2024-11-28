@@ -10,7 +10,7 @@ class ProfessorSignUpForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.is_professor = True
+        user.is_teacher = True
         user.set_password(self.cleaned_data['Senha'])
         if commit:
             user.save()
@@ -26,7 +26,7 @@ class AlunoSignUpForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.is_aluno = True
+        user.is_student = True
         user.set_password(self.cleaned_data['Senha'])
         if commit:
             user.save()

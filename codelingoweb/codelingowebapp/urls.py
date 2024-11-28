@@ -21,4 +21,6 @@ urlpatterns = [
     path('get_questions', views.get_questions, name='get_questions'),
 
     path('get_question/', views.get_question, name='get_question'),
+    path('acessar_trilha/<int:trail_id>/', views.acessar_trilha, name='acessar_trilha'),
+
 ]

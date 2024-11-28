@@ -1,3 +1,4 @@
+<!-- cadastro_trilha.html -->
 {% extends 'base.html' %}
 
 {% load static %}
@@ -5,237 +6,197 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h1 class="text-center mt-5 mb-4">{{ title }}</h1>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">{{ title }}</h1>
 
-<form method="post" action="/cadastrar_trilha" onsubmit="return validateTrailForm()">
-    {% csrf_token %}
-    <div class="card shadow-lg rounded-lg mb-4" style="margin: 1.5rem">
-        <div class="card-body">
-            <div class="form-group">
-                <label for="trail-name" class="font-weight-bold">Nome da Trilha</label>
-                <input type="text" class="form-control" id="trail-name" name="trail_name" placeholder="Insira o nome da trilha" required>
-                <label for="trail-description" class="font-weight-bold">Descrição da Trilha</label>
-                <textarea class="form-control" id="trail-description" name="trail_description" placeholder="Insira a descrição da trilha" rows="3" required></textarea>
-            </div>
-            <div class="form-group">
-                <label class="font-weight-bold">Modo de Adição de Perguntas</label>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="question_mode" id="manual" value="manual" checked onclick="toggleQuestionMode()">
-                    <label class="form-check-label" for="manual">Manual</label>
+    <form method="post" action="/cadastro_trilha" onsubmit="return validateTrailForm()">
+        {% csrf_token %}
+
+        <!-- Informações da trilha -->
+        <div class="card shadow-lg rounded-lg mb-4">
+            <div class="card-body">
+                <h5 class="font-weight-bold mb-4">Informações da Trilha</h5>
+                <div class="form-group">
+                    <label for="trail-name" class="font-weight-bold">Nome da Trilha</label>
+                    <input type="text" class="form-control" id="trail-name" name="trail_name" placeholder="Insira o nome da trilha" required>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="question_mode" id="random" value="random" onclick="toggleQuestionMode()">
-                    <label class="form-check-label" for="random">Aleatório</label>
+                <div class="form-group">
+                    <label for="trail-description" class="font-weight-bold">Descrição da Trilha</label>
+                    <textarea class="form-control" id="trail-description" name="trail_description" placeholder="Insira a descrição da trilha" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="font-weight-bold">Modo de Adição de Perguntas</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="question_mode" id="manual" value="manual" checked onclick="toggleQuestionMode()">
+                        <label class="form-check-label" for="manual">Manual</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="question_mode" id="random" value="random" onclick="toggleQuestionMode()">
+                        <label class="form-check-label" for="random">Aleatório</label>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="manual-mode" class="card shadow-lg rounded-lg mb-4" style="margin: 1.5rem">
-        <div class="card-body">
-            <div class="form-group">
-                <label for="phase-name" class="font-weight-bold">Nome da Fase</label>
-                <input type="text" class="form-control" id="phase-name" name="phase_name" placeholder="Insira o nome da fase" required>
-            </div>
+        <!-- Modo Manual -->
+        <div id="manual-mode">
+            <div id="phases-container">
+                {% for phase in phases_range %}
+                <div class="card shadow-lg rounded-lg mb-4">
+                    <div class="card-header">
+                        <h5 class="font-weight-bold mb-0">Fase {{ phase }}</h5>
+                        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#phase-{{ phase }}-content" aria-expanded="true" aria-controls="phase-{{ phase }}-content">
+                            Minimizar/Maximizar
+                        </button>
+                    </div>
+                    <div id="phase-{{ phase }}-content" class="collapse show">
+                        <div class="card-body">
+                            {% for question in questions_range %}
+                            <div class="form-group">
+                                <label for="question-phase-{{ phase }}-{{ question }}" class="font-weight-bold">Pergunta {{ question }} (Fase {{ phase }})</label>
+                                <select class="form-control custom-select" id="question-phase-{{ phase }}-{{ question }}" name="question_phase_{{ phase }}_{{ question }}" onchange="loadAnswers(this.value, {{ phase }}, {{ question }})">
+                                    <option value="">Selecione uma pergunta</option>
+                                </select>
 
-            <div class="form-group mt-4">
-                <label for="phase-description" class="font-weight-bold">Descrição da Fase</label>
-                <textarea class="form-control" id="phase-description" name="phase_description" rows="3" placeholder="Insira a descrição da fase" required></textarea>
-            </div>
-        </div>
-
-        {% for i in range %}
-        <div class="card-body">
-            <label for="question-select-{{ i }}" class="font-weight-bold">Selecione a Pergunta {{ i }}</label>
-            <select class="form-control custom-select" id="question-select-{{ i }}" name="question_select_{{ i }}" onchange="loadAnswers(this.value, {{ i }})">
-                <option value="">Selecione uma pergunta</option>
-            </select>
-            <button type="button" class="btn btn-link" onclick="toggleQuestionDetails({{ i }})">Minimizar</button>
-            <div id="question-details-{{ i }}" style="display: none;">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group mt-3">
-                            <label for="answer1-{{ i }}" class="font-weight-bold">Resposta 1</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="answer1-{{ i }}" name="option1_{{ i }}" placeholder="Insira a resposta 1" readonly>
+                                <!-- Respostas da pergunta -->
+                                <div id="question-details-phase-{{ phase }}-{{ question }}" class="mt-3" style="display: none;">
+                                    <div class="row">
+                                        {% for option in anwers_range %}
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="answer-phase-{{ phase }}-{{ question }}-{{ option }}" class="font-weight-bold">Resposta {{ option }}</label>
+                                                <input type="text" class="form-control" id="answer-phase-{{ phase }}-{{ question }}-{{ option }}" name="answer_phase_{{ phase }}_{{ question }}_{{ option }}" readonly>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group mt-3">
-                            <label for="answer2-{{ i }}" class="font-weight-bold">Resposta 2</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="answer2-{{ i }}" name="option2_{{ i }}" placeholder="Insira a resposta 2" readonly>
-                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group mt-3">
-                            <label for="answer3-{{ i }}" class="font-weight-bold">Resposta 3</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="answer3-{{ i }}" name="option3_{{ i }}" placeholder="Insira a resposta 3" readonly>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group mt-3">
-                            <label for="answer4-{{ i }}" class="font-weight-bold">Resposta 4</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="answer4-{{ i }}" name="option4_{{ i }}" placeholder="Insira a resposta 4" readonly>
-                            </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Modo Aleatório -->
+        <div id="random-mode" style="display: none;">
+            <div class="card shadow-lg rounded-lg mb-4">
+                <div class="card-body">
+                    <h5 class="font-weight-bold">Modo Aleatório</h5>
+                    <p>As perguntas serão adicionadas automaticamente de forma aleatória para cada fase.</p>
+                    <div class="form-group">
+                        <label><strong>Selecione o Nível de Dificuldade:</strong></label>
+                        <div class="btn-group w-100" role="group" aria-label="Nível de Dificuldade">
+                            <!-- Update button IDs to match those used in the JavaScript function -->
+                            <button type="button" class="btn btn-outline-success w-33 py-2" id="beginner" onclick="selectDifficulty('Iniciante')"><strong>Iniciante</strong></button>
+                            <button type="button" class="btn btn-outline-warning w-33 py-2" id="intermediate" onclick="selectDifficulty('Intermediário')"><strong>Intermediário</strong></button>
+                            <button type="button" class="btn btn-outline-danger w-33 py-2" id="advanced" onclick="selectDifficulty('Avançado')"><strong>Avançado</strong></button>
+                            <input type="hidden" id="difficulty" name="difficulty_level" value="">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        {% endfor %}
-    </div>
 
-    <div id="random-mode" class="card shadow-lg rounded-lg mb-4" style="margin: 1.5rem; display: none;">
-        <div class="card-body">
-            <div class="form-group">
-                <label for="phase-name-random" class="font-weight-bold">Nome da Fase</label>
-                <input type="text" class="form-control" id="phase-name-random" name="phase_name_random" placeholder="Insira o nome da fase" required>
-            </div>
-
-            <div class="form-group mt-4">
-                <label for="phase-description-random" class="font-weight-bold">Descrição da Fase</label>
-                <textarea class="form-control" id="phase-description-random" name="phase_description_random" rows="3" placeholder="Insira a descrição da fase" required></textarea>
-            </div>
+        <!-- Botão de envio -->
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-success btn-lg px-4 py-2"><strong>Salvar Trilha</strong></button>
         </div>
-
-        <div class="card-body">
-            <button type="button" class="btn btn-primary" onclick="loadRandomQuestion()">Selecionar Pergunta Aleatória</button>
-            <label class="font-weight-bold">Pergunta Selecionada</label>
-            <p id="random-question-text">Pergunta aleatória selecionada</p>
-        </div>
-
-        <div class="card-body" id="answers-container-random">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group mt-3">
-                        <label for="answer1-random" class="font-weight-bold">Resposta 1</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="answer1-random" name="option1_random" placeholder="Insira a resposta 1" readonly>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group mt-3">
-                        <label for="answer2-random" class="font-weight-bold">Resposta 2</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="answer2-random" name="option2_random" placeholder="Insira a resposta 2" readonly>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group mt-3">
-                        <label for="answer3-random" class="font-weight-bold">Resposta 3</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="answer3-random" name="option3_random" placeholder="Insira a resposta 3" readonly>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group mt-3">
-                        <label for="answer4-random" class="font-weight-bold">Resposta 4</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="answer4-random" name="option4_random" placeholder="Insira a resposta 4" readonly>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="text-center mt-4">
-        <button type="submit" class="btn btn-success btn-lg px-4 py-2"><strong>Atualizar Trilha</strong></button>
-    </div>
-</form>
+    </form>
+</div>
 
 <script>
-    function loadQuestions() {
-        fetch('/get_questions')
+// Função para alternar entre modos Manual e Aleatório
+function toggleQuestionMode() {
+    const manualMode = document.getElementById('manual-mode');
+    const randomMode = document.getElementById('random-mode');
+    const manualRadio = document.getElementById('manual');
+    if (manualRadio.checked) {
+        manualMode.style.display = 'block';
+        randomMode.style.display = 'none';
+    } else {
+        manualMode.style.display = 'none';
+        randomMode.style.display = 'block';
+    }
+}
+
+// Função para carregar perguntas
+function loadQuestions() {
+    fetch('/get_questions')
+        .then(response => response.json())
+        .then(data => {
+            const questionSelects = document.querySelectorAll('select[id^="question-phase-"]');
+            questionSelects.forEach(select => {
+                select.innerHTML = '<option value="">Selecione uma pergunta</option>';
+                data.forEach(question => {
+                    const option = document.createElement('option');
+                    option.value = question.id;
+                    option.textContent = question.question_text;
+                    select.appendChild(option);
+                });
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function loadAnswers(questionId, phase, question) {
+    if (questionId) {
+        fetch(`/get_question/?question_id=${questionId}`)
             .then(response => response.json())
             .then(data => {
-                for (let i = 1; i <= 5; i++) {
-                    const questionSelect = document.getElementById(`question-select-${i}`);
-                    questionSelect.innerHTML = '<option value="">Selecione uma pergunta</option>';
-                    data.forEach(question => {
-                        const option = document.createElement('option');
-                        option.value = question.id;
-                        option.textContent = question.question_text;
-                        questionSelect.appendChild(option);
-                    });
+                if (data.error) {
+                    console.error(data.error);
+                } else {
+                    // Preenche as opções
+                    {% for option in anwers_range %}
+                    document.getElementById(`answer-phase-${phase}-${question}-{{ option }}`).value = data[`option{{ option }}`];
+                    {% endfor %}
+                    const questionDetailsElement = document.getElementById(`question-details-phase-${phase}-${question}`);
+                    questionDetailsElement.style.display = 'block';
+
+                    // Lógica para verificar e destacar a opção correta
+                    for (let i = 1; i <= 4; i++) {
+                        const optionElement = document.getElementById(`answer-phase-${phase}-${question}-${i}`);
+                        if (optionElement.value === data.correct_option) {
+                            optionElement.style.backgroundColor = 'green'; // Altera o fundo da opção correta
+                        } else {
+                            optionElement.style.backgroundColor = ''; // Reseta o fundo das opções incorretas
+                        }
+                    }
                 }
             })
             .catch(error => console.error('Error:', error));
+    } else {
+        const questionDetailsElement = document.getElementById(`question-details-phase-${phase}-${question}`);
+        questionDetailsElement.style.display = 'none';
     }
+}
 
-    function loadAnswers(questionId, index) {
-        if (questionId) {
-            fetch(`/get_question/?question_id=${questionId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        console.error(data.error);
-                    } else {
-                        document.getElementById(`answer1-${index}`).value = data.option1;
-                        document.getElementById(`answer2-${index}`).value = data.option2;
-                        document.getElementById(`answer3-${index}`).value = data.option3;
-                        document.getElementById(`answer4-${index}`).value = data.option4;
-                        document.getElementById(`question-details-${index}`).style.display = 'block';
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        } else {
-            document.getElementById(`question-details-${index}`).style.display = 'none';
-        }
+// Registrar funções no escopo global
+window.toggleQuestionMode = toggleQuestionMode;
+window.loadAnswers = loadAnswers;
+
+function selectDifficulty(level) {
+    document.getElementById('difficulty').value = level;
+
+    document.getElementById('beginner').classList.remove('active');
+    document.getElementById('intermediate').classList.remove('active');
+    document.getElementById('advanced').classList.remove('active');
+
+    if (level === 'Iniciante') {
+        document.getElementById('beginner').classList.add('active');
+    } else if (level === 'Intermediário') {
+        document.getElementById('intermediate').classList.add('active');
+    } else if (level === 'Avançado') {
+        document.getElementById('advanced').classList.add('active');
     }
+}
 
-    function loadRandomQuestion() {
-        fetch('/get_questions')
-            .then(response => response.json())
-            .then(data => {
-                const randomQuestion = data[Math.floor(Math.random() * data.length)];
-                document.getElementById('random-question-text').textContent = randomQuestion.text;
-                loadAnswers(randomQuestion.id, 'random');
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
-    function toggleQuestionMode() {
-        const manualMode = document.getElementById('manual-mode');
-        const randomMode = document.getElementById('random-mode');
-        const manualRadio = document.getElementById('manual');
-        const randomRadio = document.getElementById('random');
-
-        if (manualRadio.checked) {
-            manualMode.style.display = 'block';
-            randomMode.style.display = 'none';
-        } else if (randomRadio.checked) {
-            manualMode.style.display = 'none';
-            randomMode.style.display = 'block';
-        }
-    }
-
-    function toggleQuestionDetails(index) {
-        const details = document.getElementById(`question-details-${index}`);
-        if (details.style.display === 'none') {
-            details.style.display = 'block';
-        } else {
-            details.style.display = 'none';
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        toggleQuestionMode();
-        loadQuestions();
-    });
+// Inicializar
+document.addEventListener('DOMContentLoaded', function () {
+    loadQuestions();
+});
 </script>
-
 {% endblock %}

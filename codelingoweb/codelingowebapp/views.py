@@ -1,5 +1,5 @@
 import logging
-
+import random
 from django.contrib.auth import authenticate, login as auth_login
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -7,18 +7,17 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.contrib.auth import logout
-from django.template.defaultfilters import random
 from django.http import JsonResponse
 
 from .decorators import professor_required, aluno_required
-from .models import Question, Trail, TrailPhase, TrailQuestion
+from .models import Question, Trail, TrailPhases, Phase, PhaseQuestions
 from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
 
 logger = logging.getLogger(__name__)
 
 @login_required(login_url='/login')
 def home(request):
-    if request.user.is_professor:  # Assuming staff users are professors
+    if request.user.is_teacher:  # Assuming staff users are professors
         return redirect('home-professor')
     else:
         return redirect('home-aluno')
@@ -26,8 +25,10 @@ def home(request):
 @login_required(login_url='/login')
 @aluno_required
 def home_aluno(request):
+    trails = Trail.objects.all()
     context = {
         'title': 'Home',
+        'trails': trails,
         'buttons': [
             {'name': 'Ranking', 'link': '/ranking'},
             {'name': 'Progresso', 'link': '/progresso'}
@@ -39,8 +40,10 @@ def home_aluno(request):
 @login_required(login_url='/login')
 @professor_required
 def home_professor(request):
+    trails = Trail.objects.all()
     context = {
         'title': 'Home',
+        'trails': trails,
         'buttons': [
             {'name': 'Gerar Relatorio', 'link': '/relatorio'},
             {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'},
@@ -189,6 +192,32 @@ def ranking(request):
     }
     return render(request, 'ranking.html', context)
 
+# views.py
+@login_required(login_url='/login')
+@aluno_required
+def acessar_trilha(request, trail_id):
+    try:
+        trail = Trail.objects.get(id=trail_id)
+        phases = Phase.objects.filter(trailphases__trail=trail).order_by('id')
+        completed_phases = set(request.user.completedphases_set.values_list('phase_id', flat=True))
+
+        phases_data = []
+        for phase in phases:
+            phases_data.append({
+                'id': phase.id,
+                'name': phase.name,
+                'description': phase.description,
+                'unlocked': phase.id in completed_phases or not phases_data
+            })
+
+        context = {
+            'trail': trail,
+            'phases': phases_data
+        }
+        return render(request, 'acessar_trilha.html', context)
+    except Trail.DoesNotExist:
+        messages.error(request, 'Trilha não encontrada.')
+        return redirect('home-aluno')
 
 @login_required(login_url='/login')
 @professor_required
@@ -208,8 +237,9 @@ def relatorio(request):
             {'name': 'Aluno 10', 'score': 10, 'id': 10},
         ],
         'buttons': [
-            {'name': 'Home', 'link': '/home'},
-            {'name': 'Quiz', 'link': '/quiz'}
+            {'name': 'Home', 'link': '/home-professor'},
+            {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'},
+            {'name': 'Editar Trilha', 'link': '/cadastro_trilha'}
         ]
     }
     return render(request, 'relatorio.html', context)
@@ -261,8 +291,12 @@ def cadastro_perguntas(request):
     return render(request, 'cadastro_perguntas.html', context)
 
 def get_questions(request):
-    questions = Question.objects.all().values('id', 'text')
-    return JsonResponse(list(questions), safe=False)
+    try:
+        questions = list(Question.objects.values('id', 'question_text'))
+        return JsonResponse(questions, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 @login_required(login_url='/login')
 @professor_required
 def cadastro_trilha(request):
@@ -270,13 +304,15 @@ def cadastro_trilha(request):
         trail_name = request.POST.get('trail_name')
         trail_description = request.POST.get('trail_description')
         question_mode = request.POST.get('question_mode')
+        difficulty_level = request.POST.get('difficulty_level')
         phases = []
 
         if question_mode == 'manual':
+            # Manual mode: allow the professor to select questions
             for phase_number in range(1, 6):
                 phase = []
                 for question_number in range(1, 5):
-                    question_id = request.POST.get(f'question_{phase_number}_{question_number}')
+                    question_id = request.POST.get(f'question_phase_{phase_number}_{question_number}')
                     if question_id:
                         try:
                             question = Question.objects.get(id=question_id)
@@ -285,19 +321,31 @@ def cadastro_trilha(request):
                             messages.error(request, f'Question with id {question_id} does not exist.')
                             return redirect('cadastro_trilha')
                 phases.append(phase)
-        else:
-            questions = list(Question.objects.all())
-            random.shuffle(questions)
-            for phase_number in range(1, 6):
-                phase = questions[(phase_number-1)*4:phase_number*4]
-                phases.append(phase)
+
+        else:  # Aleatório (Random mode)
+            difficulty_mapping = {
+                'Iniciante': 'easy',
+                'Intermediário': 'medium',
+                'Avançado': 'hard'
+            }
+            if difficulty_level:
+                questions = list(Question.objects.filter(difficulty=difficulty_mapping[difficulty_level]))
+                random.shuffle(questions)
+                for phase_number in range(1, 6):
+                    phase = questions[(phase_number-1)*4:phase_number*4]
+                    phases.append(phase)
+            else:
+                messages.error(request, 'Nível de dificuldade não selecionado.')
+                return redirect('cadastro_trilha')
 
         # Save the trail and its phases to the database
         trail = Trail.objects.create(name=trail_name, description=trail_description)
-        for phase in phases:
-            trail_phase = TrailPhase.objects.create(trail=trail)
-            for question in phase:
-                TrailQuestion.objects.create(phase=trail_phase, question=question)
+        for phase_questions in phases:
+            phase = Phase.objects.create(name=f'Phase {phases.index(phase_questions) + 1}', description=f'Description for phase {phases.index(phase_questions) + 1}')
+            TrailPhases.objects.create(trail=trail, phase=phase)
+            for question in phase_questions:
+                if question:  # Verifique se a questão não é nula
+                    PhaseQuestions.objects.create(phase=phase, question=question)
 
         messages.success(request, 'Trilha cadastrada com sucesso.')
         return redirect('home-professor')
@@ -311,14 +359,11 @@ def cadastro_trilha(request):
             {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'}
         ],
         'questions': questions,
-        'range': range(1, 6)
+        'questions_range': range(1, 5),
+        'anwers_range': range(1, 5),
+        'phases_range': range(1, 6)
     }
     return render(request, 'cadastro_trilha.html', context)
-
-def get_questions(request):
-    questions = Question.objects.all().values('id', 'question_text')
-    return JsonResponse(list(questions), safe=False)
-
 def get_question(request):
     question_id = request.GET.get('question_id')
     if question_id:

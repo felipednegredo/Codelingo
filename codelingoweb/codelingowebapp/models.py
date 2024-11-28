@@ -1,9 +1,10 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 
 class CustomUser(AbstractUser):
-    is_professor = models.BooleanField(default=False)
-    is_aluno = models.BooleanField(default=False)
+    is_teacher = models.BooleanField(default=False)
+    is_student = models.BooleanField(default=False)
     Nome = models.CharField(max_length=255)
     Email = models.EmailField(unique=True)
     Senha = models.CharField(max_length=255)
@@ -37,18 +38,38 @@ class Trail(models.Model):
     phases = models.ManyToManyField(Phase, related_name='trails', blank=True)
 
     def __str__(self):
-        return self.name
+        return f'{self.name} - {self.description}'
 
-class TrailPhase(models.Model):
+    def is_user_enrolled(self, user):
+        return Enrollment.objects.filter(user=user, trail=self).exists()
+
+class Enrollment(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     trail = models.ForeignKey(Trail, on_delete=models.CASCADE)
-    phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
+    date_enrolled = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.user.username} enrolled in {self.trail.name}'
+
+class TrailPhases(models.Model):
+    trail = models.ForeignKey(Trail, on_delete=models.CASCADE, default=1)
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE, default=1)
 
     def __str__(self):
         return f'{self.trail} - {self.phase}'
 
-class TrailQuestion(models.Model):
-    trail = models.ForeignKey(Trail, on_delete=models.CASCADE)
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+class PhaseQuestions(models.Model):
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE, default=1)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, default=1)
 
     def __str__(self):
-        return f'{self.trail} - {self.question}'
+        return f'{self.phase} - {self.question}'
+
+class CompletedPhases(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
+    completed_at = models.DateTimeField(auto_now_add=True)
+    time_spent = models.IntegerField()
+
+    class Meta:
+        unique_together = ('user', 'phase')

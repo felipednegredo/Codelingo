@@ -15,6 +15,20 @@
                         <div class="card-body d-flex flex-column">
                             <h2 class="card-title mb-3" style="font-size: 1.5rem; font-weight: bold; color: #34495e;">{{ trail.name }}</h2>
                             <p class="card-text" style="color: #7f8c8d; font-size: 1.1rem; flex-grow: 1;">{{ trail.description }}</p>
+                            {% if trail.questions %}
+                                <p class="card-text" style="color: #7f8c8d; font-size: 1.1rem;">{{ trail.questions|length }} perguntas</p>
+                            {% else %}
+                                <p class="card-text" style="color: #7f8c8d; font-size: 1.1rem;">Nenhuma pergunta</p>
+                            {% endif %}
+                            {% if user.is_authenticated %}
+                                {% if user.is_student %}
+                                    {% if not trail.is_user_enrolled %}
+                                        <a href="{% url 'participar_trilha' trail.id %}" class="btn btn-primary mt-2 align-self-start">Participar</a>
+                                    {% endif %}
+                                {% elif user.is_teacher %}
+                                    <p class="card-text" style="color: #7f8c8d; font-size: 1.1rem;">{{ trail.enrolled_students|length }} alunos</p>
+                                {% endif %}
+                            {% endif %}
                             <a href="#" class="btn btn-primary mt-2 align-self-start">Ver mais</a>
                         </div>
                     </div>

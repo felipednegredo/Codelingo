@@ -1,0 +1,25 @@
+<!-- acessar_trilha.html -->
+{% extends 'base.html' %}
+
+{% block title %}Acessar Trilha{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">{{ trail.name }}</h1>
+    <p class="text-center">{{ trail.description }}</p>
+
+    <div class="list-group">
+        {% for phase in phases %}
+        <a href="{% if phase.unlocked %}/fase/{{ phase.id }}{% else %}#{% endif %}" class="list-group-item list-group-item-action {% if not phase.unlocked %}disabled{% endif %}">
+            <h5 class="mb-1">{{ phase.name }}</h5>
+            <p class="mb-1">{{ phase.description }}</p>
+            {% if phase.unlocked %}
+            <small class="text-success">Desbloqueado</small>
+            {% else %}
+            <small class="text-danger">Bloqueado</small>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
