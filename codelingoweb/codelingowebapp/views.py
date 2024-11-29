@@ -1,16 +1,18 @@
 import logging
 import random
+import json
+import requests
 from django.contrib.auth import authenticate, login as auth_login
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.contrib.auth import logout
 from django.http import JsonResponse
-
+from django.views.decorators.csrf import csrf_exempt
 from .decorators import professor_required, aluno_required
-from .models import Question, Trail, TrailPhases, Phase, PhaseQuestions
+from .models import Question, Trail, TrailPhases, Phase, PhaseQuestions, Enrollment
 from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
 
 logger = logging.getLogger(__name__)
@@ -67,19 +69,18 @@ def cadastro(request):
     }
     return render(request, 'cadastro.html', context)
 
+@csrf_exempt
 def login_view(request):
     if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        print(f'Usuário: {username}, Senha: {password}')
+        username = request.POST.get('username')
+        password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
-        print(user)
         if user is not None:
             auth_login(request, user)
-            print(f'Usuário {user.username} autenticado com sucesso.')
-            return redirect('home')
+            role = 'aluno' if user.is_student else 'professor' if user.is_teacher else 'unknown'
+            return JsonResponse({'success': True, 'role': role})
         else:
-            messages.error(request, 'Usuário ou senha inválidos')
+            return JsonResponse({'success': False, 'error': 'Invalid credentials'})
     return render(request, 'login.html', {'title': 'Login'})
 
 def cadastro_professor(request):
@@ -101,7 +102,7 @@ def cadastro_professor(request):
                         password=senha,
                         first_name=nome.split()[0],
                         last_name=' '.join(nome.split()[1:]),
-                        is_professor=True,
+                        is_teacher=True,
                         Email=email,
                         Nome=nome
                     )
@@ -144,7 +145,7 @@ def cadastro_aluno(request):
                         password=senha,
                         first_name=nome.split()[0],
                         last_name=' '.join(nome.split()[1:]),
-                        is_aluno=True,
+                        is_student=True,
                         Matricula=matricula,
                         Email=email,
                         Nome=nome
@@ -212,7 +213,11 @@ def acessar_trilha(request, trail_id):
 
         context = {
             'trail': trail,
-            'phases': phases_data
+            'phases': phases_data,
+            'buttons': [
+                {'name': 'Home', 'link': '/home-aluno'},
+                {'name': 'Ranking', 'link': '/ranking'}
+            ]
         }
         return render(request, 'acessar_trilha.html', context)
     except Trail.DoesNotExist:
@@ -248,11 +253,7 @@ def relatorio(request):
 @aluno_required
 def quiz(request):
     context = {
-        'title': 'Quiz',
-        'questions': [
-            {'question': 'Qual a capital do Brasil?', 'answers': ['Brasília', 'Rio de Janeiro', 'São Paulo', 'Curitiba'], 'correct': 0},
-            {'question': 'Qual a capital do Acre?', 'answers': ['Brasília', 'Rio Branco', 'São Paulo', 'Curitiba'], 'correct': 1},
-        ],
+
         'buttons': [
             {'name': 'Home', 'link': '/home-aluno'},
             {'name': 'Ranking', 'link': '/ranking'}
@@ -384,3 +385,50 @@ def get_question(request):
             return JsonResponse({'error': 'Question not found'}, status=404)
     else:
         return JsonResponse({'error': 'No question_id provided'}, status=400)
+
+
+@login_required(login_url='/login')
+@aluno_required
+def participar_trilha(request, trail_id):
+    trail = get_object_or_404(Trail, id=trail_id)
+
+    # Check if the user is already enrolled
+    if not Enrollment.objects.filter(user=request.user, trail=trail).exists():
+        # Enroll the user in the trail
+        Enrollment.objects.create(user=request.user, trail=trail)
+        messages.success(request, 'Você foi inscrito na trilha com sucesso.')
+    else:
+        messages.info(request, 'Você já está inscrito nesta trilha.')
+
+    return redirect('acessar_trilha', trail_id=trail.id)
+
+@login_required(login_url='/login')
+@aluno_required
+def acessar_fase(request, phase_id):
+    phase = get_object_or_404(Phase, id=phase_id)
+    questions = PhaseQuestions.objects.filter(phase=phase).select_related('question')
+    questions_data = []
+
+    for pq in questions:
+        question = pq.question
+        question_data = {
+            'id': question.id,
+            'text': question.question_text,
+            'option1': question.option1,
+            'option2': question.option2,
+            'option3': question.option3,
+            'option4': question.option4,
+            'correct_option': question.correct_option,
+            'difficulty': question.difficulty
+        }
+        questions_data.append(question_data)
+
+    context = {
+        'phase': phase,
+        'questions': questions_data,
+        'buttons': [
+            {'name': 'Home', 'link': '/home-aluno'},
+            {'name': 'Ranking', 'link': '/ranking'}
+        ]
+    }
+    return render(request, 'quiz.html', context)

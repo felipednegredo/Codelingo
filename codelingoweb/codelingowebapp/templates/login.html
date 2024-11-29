@@ -11,7 +11,7 @@
             <h1 class="text-center mb-4" style="font-size: 2rem; color: #2c3e50; font-weight: bold;">{{ title }}</h1>
 
             <div class="form-container">
-                <form method="post" action="/login" class="form">
+                <form id="login-form" class="form">
                     {% csrf_token %}
                     <div class="form-group mb-4">
                         <label for="id_username" class="form-label"><strong>E-mail</strong></label>
@@ -34,4 +34,48 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const formData = new FormData(this);
+    fetch('/login', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const redirectUrl = data.role === 'aluno' ? '/home-aluno' : data.role === 'professor' ? '/home-professor' : '/';
+            Swal.fire({
+                icon: 'success',
+                title: 'Login bem-sucedido!',
+                text: 'Você será redirecionado para a página inicial.',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                window.location.href = redirectUrl;
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Falha no login',
+                text: 'Credenciais inválidas. Por favor, tente novamente.',
+                confirmButtonText: 'OK'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro',
+            text: 'Ocorreu um erro. Por favor, tente novamente.',
+            confirmButtonText: 'OK'
+        });
+    });
+});
+</script>
 {% endblock %}

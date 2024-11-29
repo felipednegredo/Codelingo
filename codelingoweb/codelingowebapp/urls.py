@@ -23,4 +23,8 @@ urlpatterns = [
     path('get_question/', views.get_question, name='get_question'),
     path('acessar_trilha/<int:trail_id>/', views.acessar_trilha, name='acessar_trilha'),
 
+    path('participar-trilha/<int:trail_id>/', views.participar_trilha, name='participar_trilha'),
+
+    path('acessar_fase/<int:phase_id>/', views.acessar_fase, name='acessar_fase'),
+
 ]

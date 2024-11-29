@@ -20,14 +20,12 @@
                             {% else %}
                                 <p class="card-text" style="color: #7f8c8d; font-size: 1.1rem;">Nenhuma pergunta</p>
                             {% endif %}
-                            {% if user.is_authenticated %}
-                                {% if user.is_student %}
-                                    {% if not trail.is_user_enrolled %}
-                                        <a href="{% url 'participar_trilha' trail.id %}" class="btn btn-primary mt-2 align-self-start">Participar</a>
-                                    {% endif %}
-                                {% elif user.is_teacher %}
-                                    <p class="card-text" style="color: #7f8c8d; font-size: 1.1rem;">{{ trail.enrolled_students|length }} alunos</p>
+                            {% if user.is_authenticated and user.is_student %}
+                                {% if not trail.is_user_enrolled %}
+                                    <a href="{% url 'participar_trilha' trail.id %}" class="btn btn-primary mt-2 align-self-start">Participar</a>
                                 {% endif %}
+                            {% elif user.is_authenticated and user.is_teacher %}
+                                <p class="card-text" style="color: #7f8c8d; font-size: 1.1rem;">{{ trail.enrolled_students|length }} alunos</p>
                             {% endif %}
                             <a href="#" class="btn btn-primary mt-2 align-self-start">Ver mais</a>
                         </div>
