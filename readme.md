@@ -2,6 +2,10 @@
 
 Bem-vindo ao **Codelingo**, um projeto desenvolvido para a matéria de melhoria de processo de software - (MPS). Siga as instruções abaixo para configurar e executar o ambiente localmente.
 
+## Desenvolvido por
+
+Alunos: Felipe de Negredo, Homero Pytlovanciw, Pamela Bandeira Gerber, Vanessa Bastos da Luz e Yuri Rodrigues
+
 ## 📋 Pré-requisitos
 
 Antes de começar, certifique-se de que você possui os seguintes itens instalados em sua máquina:
