@@ -1,16 +1,19 @@
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
+from .validators import alphanumeric_password_validator
+from django.core.validators import EmailValidator
+from django.contrib.auth import get_user_model
 
 class CustomUser(AbstractUser):
     is_teacher = models.BooleanField(default=False)
     is_student = models.BooleanField(default=False)
     Nome = models.CharField(max_length=255)
-    Email = models.EmailField(unique=True)
-    Senha = models.CharField(max_length=255)
+    Email = models.EmailField(unique=True, validators=[EmailValidator()])
+    Senha = models.CharField(max_length=255, validators=[alphanumeric_password_validator])
     Matricula = models.CharField(max_length=20, blank=True, null=True)
     groups = models.ManyToManyField(Group, related_name='customuser_set', blank=True)
     user_permissions = models.ManyToManyField(Permission, related_name='customuser_set', blank=True)
+    completedphases_set = models.ManyToManyField('CompletedPhases', related_name='customuser_set', blank=True)
 
 class Question(models.Model):
     question_text = models.CharField(max_length=255)
@@ -27,7 +30,7 @@ class Question(models.Model):
 class Phase(models.Model):
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
-    questions = models.ManyToManyField(Question, related_name='phases', blank=True)
+    #questions = models.ManyToManyField(Question, related_name='phases', blank=True)
 
     def __str__(self):
         return self.name
@@ -35,7 +38,7 @@ class Phase(models.Model):
 class Trail(models.Model):
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
-    phases = models.ManyToManyField(Phase, related_name='trails', blank=True)
+    #phases = models.ManyToManyField(Phase, related_name='trails', blank=True)
 
     def __str__(self):
         return f'{self.name} - {self.description}'
@@ -65,8 +68,16 @@ class PhaseQuestions(models.Model):
     def __str__(self):
         return f'{self.phase} - {self.question}'
 
-class CompletedPhases(models.Model):
+class UserResponse(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    is_correct = models.BooleanField()
+    questionDifficulty = models.CharField(max_length=255)
+    response_time = models.IntegerField()
+
+
+class CompletedPhases(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='completed_phases')
     phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
     completed_at = models.DateTimeField(auto_now_add=True)
     time_spent = models.IntegerField()

@@ -81,32 +81,30 @@ LOGOUT_REDIRECT_URL = '/'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'Codelingo',
-        'USER': 'postgres',
-        'PASSWORD': '30072002',
-        'HOST': 'LOCALHOST',
-        'PORT': '5432',  # Ensure the port is specified
-        'OPTIONS': {
-             'client_encoding': 'UTF8',
-        },
-        'CONN_MAX_AGE': 600,  # Keep the connection open for 10 minutes
-    }
-}
-
+#
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('DATABASE_NAME', 'codelingoweb'),
-#         'USER': os.getenv('DATABASE_USER', 'user'),
-#         'PASSWORD': os.getenv('DATABASE_PASSWORD', 'password'),
-#         'HOST': os.getenv('DATABASE_HOST', 'db'),
-#         'PORT': os.getenv('DATABASE_PORT', '5432'),
+#         'NAME': 'Codelingo',
+#         'USER': 'postgres',
+#         'PASSWORD': '30072002',
+#         'HOST': 'LOCALHOST',
+#         'PORT': '5432',  # Ensure the port is specified
+#         'OPTIONS': {
+#              'client_encoding': 'UTF8',
+#         },
+#         'CONN_MAX_AGE': 600,  # Keep the connection open for 10 minutes
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

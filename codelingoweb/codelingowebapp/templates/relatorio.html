@@ -1,34 +1,38 @@
 {% extends 'base.html' %}
 
-{% load static %}
-
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">{{ title }}</h1>
-        <form method="post" action="/gerar-pdf/">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-dark btn-lg"><strong>Baixar Relatório</strong></button>
-        </form>
-    </div>
-    <div class="list-group">
-        {% for user in relatorio %}
-        <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center" style="width: 40px; height: 40px;">
-                    {{ user.name|slice:":1" }}
-                </div>
-                <span class="ml-3">{{ user.name }}</span>
-            </div>
-            <div>
-                <label>
-                    <input type="checkbox" name="selected_users" value="{{ user.id }}" class="form-check-input mt-0">
-                </label>
-            </div>
+    <h1 class="text-center mb-4">{{ title }}</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Selecionar</th>
+                        <th>Nome</th>
+                        <th>Trilha</th>
+                        <th>Pontuação Total</th>
+                        <th>Tempo Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aluno in alunos %}
+                    <tr>
+                        <td><input type="checkbox" name="alunos" value="{{ aluno.id }}"></td>
+                        <td>{{ aluno.name }}</td>
+                        <td>{{ aluno.trail }}</td>
+                        <td>{{ aluno.total_score }}</td>
+                        <td>{{ aluno.total_time }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        {% endfor %}
-    </div>
+        <button type="submit" class="btn btn-primary">Gerar PDF</button>
+    </form>
 </div>
+
 {% endblock %}

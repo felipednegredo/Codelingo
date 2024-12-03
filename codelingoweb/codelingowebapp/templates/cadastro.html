@@ -15,48 +15,39 @@
                     <h2 class="text-center mb-4" style="color: #34495e; font-size: 1.5rem;">{{ description }}</h2>
 
                     <!-- Formulários dinâmicos -->
-                    <form method="post" action="{{ request.path }}">
+                    <form id="cadastro-form" method="post" action="{{ request.path }}">
                         {% csrf_token %}
                         {% for form in forms %}
                             <div class="form-group mb-3">
                                 <label for="{{ form.id }}" class="form-label"><strong>{{ form.label }}</strong></label>
                                 {% if form.label == "Senha" %}
-                                    <input type="password" class="form-control" id="{{ form.id }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
-                                {% elif form.label == "E-mail" %}
-                                    <input type="email" class="form-control" id="{{ form.id }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
+                                    <input type="password" class="form-control" id="{{ form.name }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
                                 {% elif form.label == "Matricula" %}
-                                    <input type="text" class="form-control" id="{{ form.id }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
+                                    <input type="number" class="form-control" id="{{ form.name }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
                                 {% else %}
-                                    <input type="text" class="form-control" id="{{ form.id }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
+                                    <input type="text" class="form-control" id="{{ form.name }}" name="{{ form.name }}" placeholder="{{ form.placeholder }}" required>
                                 {% endif %}
+                                <div class="text-danger mt-2">
+                                    {% for error in form.errors %}
+                                        <p>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
                             </div>
                         {% endfor %}
 
                         <!-- Opções de botão -->
                         <div id="options-div" class="d-flex justify-content-between flex-wrap">
-                            {% if options|length == 1 %}
-                                {% if options.0.name == "Cadastrar" %}
+                            {% for option in options %}
+                                {% if option.name == "Cadastrar" %}
                                     <button type="submit" class="btn btn-dark btn-lg mt-3 mx-auto">
-                                        <strong>{{ options.0.name }}</strong>
+                                        <strong>{{ option.name }}</strong>
                                     </button>
                                 {% else %}
-                                    <a class="btn btn-dark btn-lg mt-3 mx-auto" href="{{ options.0.link }}">
-                                        <strong>{{ options.0.name }}</strong>
+                                    <a class="btn btn-dark btn-lg mt-3 mx-auto" href="{{ option.link }}">
+                                        <strong>{{ option.name }}</strong>
                                     </a>
                                 {% endif %}
-                            {% else %}
-                                {% for option in options %}
-                                    {% if option.name == "Cadastrar" %}
-                                        <button type="submit" class="btn btn-dark btn-lg mt-3">
-                                            <strong>{{ option.name }}</strong>
-                                        </button>
-                                    {% else %}
-                                        <a class="btn btn-dark btn-lg mt-3" href="{{ option.link }}">
-                                            <strong>{{ option.name }}</strong>
-                                        </a>
-                                    {% endif %}
-                                {% endfor %}
-                            {% endif %}
+                            {% endfor %}
                         </div>
                     </form>
                 </div>
@@ -65,5 +56,51 @@
     </div>
 </div>
 
+<script>
+document.getElementById('cadastro-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const emailField = document.getElementById('Email');
+    const passwordField = document.getElementById('Senha');
+    const email = emailField.value.trim();
+    const password = passwordField.value.trim();
+    let hasError = false;
+
+    if (!email || !password) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro de validação',
+            text: 'Por favor, preencha todos os campos.',
+            confirmButtonText: 'OK'
+        });
+        hasError = true;
+    }
+
+    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$/;
+    if (!emailPattern.test(email)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro de validação',
+            text: 'Por favor, insira um e-mail válido.',
+            confirmButtonText: 'OK'
+        });
+        hasError = true;
+    }
+
+    if (!/^[a-zA-Z0-9]{8,20}$/.test(password)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro de validação',
+            text: 'A senha deve ser alfanumérica e ter entre 8 e 20 caracteres.',
+            confirmButtonText: 'OK'
+        });
+        hasError = true;
+    }
+
+    if (!hasError) {
+        this.submit();
+    }
+});
+</script>
 
 {% endblock %}

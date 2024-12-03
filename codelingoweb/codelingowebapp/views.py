@@ -1,19 +1,21 @@
 import logging
 import random
 import json
-import requests
 from django.contrib.auth import authenticate, login as auth_login
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from django.contrib.auth import logout
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from .decorators import professor_required, aluno_required
-from .models import Question, Trail, TrailPhases, Phase, PhaseQuestions, Enrollment
+from .models import Question, Trail, Phase, PhaseQuestions, Enrollment, UserResponse, CompletedPhases, TrailPhases
 from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
+from django.template.loader import render_to_string
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 
 logger = logging.getLogger(__name__)
 
@@ -27,35 +29,66 @@ def home(request):
 @login_required(login_url='/login')
 @aluno_required
 def home_aluno(request):
+    enrolled_trail = Enrollment.objects.filter(user=request.user).first()
+    first_phase_id = None
+    if enrolled_trail:
+        first_phase = Phase.objects.filter(trailphases__trail=enrolled_trail.trail).order_by('id').first()
+        if first_phase:
+            first_phase_id = first_phase.id
+
     trails = Trail.objects.all()
+    trails_data = []
+    for trail in trails:
+        phases_count = TrailPhases.objects.filter(trail=trail).count()
+        enrolled_students_count = Enrollment.objects.filter(trail=trail).count()
+        trails_data.append({
+            'id': trail.id,
+            'name': trail.name,
+            'description': trail.description,
+            'phases_count': phases_count,
+            'enrolled_students_count': enrolled_students_count,
+            'is_user_enrolled': trail.is_user_enrolled(request.user),
+            'first_phase_id': first_phase_id if trail.is_user_enrolled(request.user) else None
+        })
     context = {
         'title': 'Home',
-        'trails': trails,
+        'trails': trails_data,
         'buttons': [
             {'name': 'Ranking', 'link': '/ranking'},
             {'name': 'Progresso', 'link': '/progresso'}
         ]
     }
-
     return render(request, 'home.html', context)
 
 @login_required(login_url='/login')
 @professor_required
 def home_professor(request):
     trails = Trail.objects.all()
+    trails_data = []
+    for trail in trails:
+        phases_count = TrailPhases.objects.filter(trail=trail).count()
+        enrolled_students_count = Enrollment.objects.filter(trail=trail).count()
+        trails_data.append({
+            'id': trail.id,
+            'name': trail.name,
+            'description': trail.description,
+            'phases_count': phases_count,
+            'enrolled_students_count': enrolled_students_count
+        })
     context = {
         'title': 'Home',
-        'trails': trails,
+        'trails': trails_data,
         'buttons': [
             {'name': 'Gerar Relatorio', 'link': '/relatorio'},
             {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'},
             {'name': 'Cadastrar Trilha', 'link': '/cadastro_trilha'}
         ]
     }
-
     return render(request, 'home.html', context)
 
 def cadastro(request):
+    if request.user.is_authenticated:
+        return redirect('home')  # Redireciona para a página inicial se o usuário já estiver logado
     context = {
         'title': 'Cadastro',
         'description': 'Escolha o tipo de cadastro',
@@ -188,14 +221,11 @@ def ranking(request):
         ],
         'buttons': [
             {'name': 'Progresso', 'link': '/progresso'},
-            {'name': 'Home', 'link': '/home'}
+            {'name': 'Home', 'link': '/home-aluno'}
         ]
     }
     return render(request, 'ranking.html', context)
 
-# views.py
-@login_required(login_url='/login')
-@aluno_required
 def acessar_trilha(request, trail_id):
     try:
         trail = Trail.objects.get(id=trail_id)
@@ -223,24 +253,53 @@ def acessar_trilha(request, trail_id):
     except Trail.DoesNotExist:
         messages.error(request, 'Trilha não encontrada.')
         return redirect('home-aluno')
-
 @login_required(login_url='/login')
 @professor_required
 def relatorio(request):
+    trails = Trail.objects.filter(professor=request.user)
+    alunos_data = []
+
+    for trail in trails:
+        enrollments = Enrollment.objects.filter(trail=trail)
+        for enrollment in enrollments:
+            aluno = enrollment.user
+            responses = UserResponse.objects.filter(user=aluno, question__phasequestions__phase__trailphases__trail=trail)
+            alunos_data.append({
+                'id': aluno.id,
+                'name': aluno.get_full_name(),
+                'trail': trail.name,
+                'responses': responses,
+                'total_score': sum(response.is_correct for response in responses),
+                'total_time': sum(response.response_time for response in responses)
+            })
+
+    if request.method == 'POST':
+        selected_alunos = request.POST.getlist('alunos')
+        selected_data = [aluno for aluno in alunos_data if str(aluno['id']) in selected_alunos]
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="relatorio.pdf"'
+
+        p = canvas.Canvas(response, pagesize=letter)
+        width, height = letter
+
+        p.drawString(100, height - 100, "Relatório de Desempenho")
+        y = height - 150
+
+        for aluno in selected_data:
+            p.drawString(100, y, f"Nome: {aluno['name']}")
+            p.drawString(100, y - 20, f"Trilha: {aluno['trail']}")
+            p.drawString(100, y - 40, f"Pontuação Total: {aluno['total_score']}")
+            p.drawString(100, y - 60, f"Tempo Total: {aluno['total_time']}")
+            y -= 100
+
+        p.showPage()
+        p.save()
+        return response
+
     context = {
         'title': 'Relatório',
-        'relatorio': [
-            {'name': 'Aluno 1', 'score': 100, 'id': 1},
-            {'name': 'Aluno 2', 'score': 90, 'id': 2},
-            {'name': 'Aluno 3', 'score': 80, 'id': 3},
-            {'name': 'Aluno 4', 'score': 70, 'id': 4},
-            {'name': 'Aluno 5', 'score': 60, 'id': 5},
-            {'name': 'Aluno 6', 'score': 50, 'id': 6},
-            {'name': 'Aluno 7', 'score': 40, 'id': 7},
-            {'name': 'Aluno 8', 'score': 30, 'id': 8},
-            {'name': 'Aluno 9', 'score': 20, 'id': 9},
-            {'name': 'Aluno 10', 'score': 10, 'id': 10},
-        ],
+        'alunos': alunos_data,
         'buttons': [
             {'name': 'Home', 'link': '/home-professor'},
             {'name': 'Cadastrar Perguntas', 'link': '/cadastro_perguntas'},
@@ -250,18 +309,6 @@ def relatorio(request):
     return render(request, 'relatorio.html', context)
 
 @login_required(login_url='/login')
-@aluno_required
-def quiz(request):
-    context = {
-
-        'buttons': [
-            {'name': 'Home', 'link': '/home-aluno'},
-            {'name': 'Ranking', 'link': '/ranking'}
-        ]
-    }
-    return render(request, 'quiz.html', context)
-
-@login_required(login_url='/login')
 @professor_required
 def cadastro_perguntas(request):
     message = None
@@ -269,10 +316,15 @@ def cadastro_perguntas(request):
     if request.method == 'POST':
         form = QuestionForm(request.POST)
         if form.is_valid():
-            form.save()
-            logger.info(f'Pergunta {form.cleaned_data["question_text"]} cadastrada com sucesso.')
-            message = 'Pergunta cadastrada com sucesso.'
-            message_type = 'success'
+            question_text = form.cleaned_data['question_text']
+            if Question.objects.filter(question_text=question_text).exists():
+                message = 'A pergunta já existe.'
+                message_type = 'error'
+            else:
+                form.save()
+                logger.info(f'Pergunta {question_text} cadastrada com sucesso.')
+                message = 'Pergunta cadastrada com sucesso.'
+                message_type = 'success'
         else:
             message = 'Ocorreu um erro ao cadastrar a pergunta. Por favor, tente novamente.'
             message_type = 'error'
@@ -297,6 +349,7 @@ def get_questions(request):
         return JsonResponse(questions, safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
 
 @login_required(login_url='/login')
 @professor_required
@@ -365,6 +418,8 @@ def cadastro_trilha(request):
         'phases_range': range(1, 6)
     }
     return render(request, 'cadastro_trilha.html', context)
+
+
 def get_question(request):
     question_id = request.GET.get('question_id')
     if question_id:
@@ -432,3 +487,61 @@ def acessar_fase(request, phase_id):
         ]
     }
     return render(request, 'quiz.html', context)
+def check_question_exists(request):
+    question_text = request.GET.get('question', '')
+    exists = Question.objects.filter(question_text=question_text).exists()
+    return JsonResponse({'exists': exists})
+
+@csrf_exempt
+def save_response(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            question = Question.objects.get(id=data['question_id'])
+            is_correct = data['is_correct']
+            response_time = data['response_time']
+            question_difficulty = data['question_difficulty']
+            user_response = UserResponse.objects.create(
+                user=request.user,
+                question=question,
+                is_correct=is_correct,
+                response_time=response_time,
+                question_difficulty=question_difficulty
+            )
+
+            # Check if all questions in the phase are answered
+            phase = question.phasequestions_set.first().phase
+            total_questions = phase.phasequestions_set.count()
+            answered_questions = UserResponse.objects.filter(user=request.user, question__phasequestions__phase=phase).count()
+
+            if answered_questions == total_questions:
+                CompletedPhases.objects.create(user=request.user, phase=phase)
+                # Unlock the next phase
+                next_phase = Phase.objects.filter(trailphases__trail=phase.trailphases_set.first().trail, id__gt=phase.id).first()
+                if next_phase:
+                    # Logic to unlock the next phase (e.g., notify the user)
+                    pass
+
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            logger.error(f"Error saving response: {e}")
+            return JsonResponse({'status': 'fail', 'error': str(e)}, status=500)
+    return JsonResponse({'status': 'fail'}, status=400)
+
+
+logger = logging.getLogger(__name__)
+
+
+def get_random_questions(request, difficulty):
+    if difficulty:
+        questions = Question.objects.filter(difficulty=difficulty)[:20]
+        questions_list = list(questions)
+        logger.debug(f"Fetched {len(questions_list)} questions for difficulty {difficulty}")
+        random.shuffle(questions_list)
+        phases = [questions_list[i:i + 4] for i in range(0, 20, 4)]
+        data = {
+            'phases': [{'questions': [{'question_text': q.question_text} for q in phase]} for phase in phases]
+        }
+        return JsonResponse(data)
+    else:
+        return JsonResponse({'error': 'Nível de dificuldade não fornecido'}, status=400)

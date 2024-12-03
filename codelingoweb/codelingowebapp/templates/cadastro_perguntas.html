@@ -7,6 +7,12 @@
 {% block content %}
 <h1 class="text-center mt-5 mb-4">{{ title }}</h1>
 
+{% if message %}
+    <div class="alert alert-{{ message_type }} text-center" role="alert">
+        {{ message }}
+    </div>
+{% endif %}
+
 <form method="post" action="/cadastro_perguntas" onsubmit="return validateForm()">
     {% csrf_token %}
     <div class="card shadow-lg rounded-lg mb-4" style="margin: 1.5rem">
@@ -34,7 +40,7 @@
                             <input type="text" class="form-control" id="answer1" name="option1" placeholder="Insira a resposta 1" required>
                             <div class="input-group-append">
                                 <div class="input-group-text">
-                                    <input type="radio" name="correct_option" value="option1">
+                                    <input type="radio" name="correct_option" value="option1" required>
                                 </div>
                             </div>
                         </div>
@@ -47,7 +53,7 @@
                             <input type="text" class="form-control" id="answer2" name="option2" placeholder="Insira a resposta 2" required>
                             <div class="input-group-append">
                                 <div class="input-group-text">
-                                    <input type="radio" name="correct_option" value="option2">
+                                    <input type="radio" name="correct_option" value="option2" required>
                                 </div>
                             </div>
                         </div>
@@ -62,7 +68,7 @@
                             <input type="text" class="form-control" id="answer3" name="option3" placeholder="Insira a resposta 3" required>
                             <div class="input-group-append">
                                 <div class="input-group-text">
-                                    <input type="radio" name="correct_option" value="option3">
+                                    <input type="radio" name="correct_option" value="option3" required>
                                 </div>
                             </div>
                         </div>
@@ -75,7 +81,7 @@
                             <input type="text" class="form-control" id="answer4" name="option4" placeholder="Insira a resposta 4" required>
                             <div class="input-group-append">
                                 <div class="input-group-text">
-                                    <input type="radio" name="correct_option" value="option4">
+                                    <input type="radio" name="correct_option" value="option4" required>
                                 </div>
                             </div>
                         </div>
@@ -91,6 +97,12 @@
 </form>
 
 <script>
+    async function checkQuestionExists(question) {
+        const response = await fetch(`/check_question_exists?question=${encodeURIComponent(question)}`);
+        const data = await response.json();
+        return data.exists;
+    }
+
     function selectDifficulty(level) {
         document.getElementById('difficulty').value = level;
 
@@ -107,35 +119,80 @@
         }
     }
 
-    function validateForm() {
+    async function validateForm() {
         const question = document.getElementById('question-text').value;
         const answers = document.querySelectorAll('input[name="correct_option"]');
         const correct = document.querySelector('input[name="correct_option"]:checked');
         const difficulty = document.getElementById('difficulty').value;
 
         if (!question) {
-            alert('Por favor, insira a pergunta.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de validação',
+                text: 'Por favor, insira a pergunta.',
+                confirmButtonText: 'OK'
+            });
             return false;
         }
 
         for (let i = 0; i < answers.length; i++) {
             if (!answers[i].value) {
-                alert(`Por favor, insira a resposta ${i + 1}.`);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro de validação',
+                    text: `Por favor, insira a resposta ${i + 1}.`,
+                    confirmButtonText: 'OK'
+                });
                 return false;
             }
         }
 
         if (!correct) {
-            alert('Por favor, selecione a resposta correta.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de validação',
+                text: 'Por favor, selecione a resposta correta.',
+                confirmButtonText: 'OK'
+            });
             return false;
         }
 
         if (!difficulty) {
-            alert('Por favor, selecione o nível de dificuldade.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de validação',
+                text: 'Por favor, selecione o nível de dificuldade.',
+                confirmButtonText: 'OK'
+            });
             return false;
         }
 
+        const questionExists = await checkQuestionExists(question);
+        if (questionExists) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de validação',
+                text: 'A pergunta já existe.',
+                confirmButtonText: 'OK'
+            });
+            return false;
+        }
+
+        showSuccessAlert('Formulário enviado com sucesso!');
         return true;
+    }
+
+    function showSuccessAlert(message) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Sucesso',
+            text: message,
+            confirmButtonText: 'OK'
+        }).then(() => {
+        setTimeout(() => {
+            Swal.close();
+        }, 3000); // 3000 milissegundos = 3 segundos
+    });
     }
 </script>
 
