@@ -12,7 +12,6 @@
         {% for phase in phases %}
         <a href="{% if phase.unlocked %}{% url 'acessar_fase' phase.id %}{% else %}#{% endif %}" class="list-group-item list-group-item-action {% if not phase.unlocked %}disabled{% endif %}">
             <h5 class="mb-1">{{ phase.name }}</h5>
-            <p class="mb-1">{{ phase.description }}</p>
             {% if phase.unlocked %}
             <small class="text-success">Desbloqueado</small>
             {% else %}

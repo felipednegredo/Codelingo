@@ -23,4 +23,6 @@ urlpatterns = [
     path('save-response', views.save_response, name='save_response'),
     path('check_question_exists', views.check_question_exists, name='check_question_exists'),
     path('get_random_questions/<str:difficulty>/', views.get_random_questions, name='get_random_questions'),
+
+    path('resultado_fase/<int:phase_id>/', views.resultado_fase, name='resultado_fase'),
 ]

@@ -1,3 +1,4 @@
+<!-- quiz.html -->
 {% extends 'base.html' %}
 
 {% load static %}
@@ -5,11 +6,9 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<!-- Título da Página -->
 <div class="container mt-5">
     <h1 class="text-center mb-4" style="color: #2c3e50;">{{ title }}</h1>
 
-    <!-- Linha com o tempo restante e o contador de perguntas -->
     <div class="d-flex justify-content-between align-items-center mt-4">
         <h5 class="text-muted mb-0">
             <i class="bi bi-stopwatch" style="font-size: 1.5rem;"></i>
@@ -20,7 +19,6 @@
         </h5>
     </div>
 
-    <!-- Cartão com Pergunta e Respostas -->
     <div class="card shadow-lg mt-4" style="border-radius: 15px; border: 1px solid #ccc;">
         <div class="card-header bg-primary text-white" style="border-top-left-radius: 15px; border-top-right-radius: 15px;">
             <h5 class="mb-0" id="question-text" style="font-weight: bold; font-size: 1.25rem;">{{ questions.0.question }}</h5>
@@ -45,8 +43,15 @@ var currentQuestionIndex = 0;
 var timeLeft = 180;
 var timerElement = document.getElementById("timer");
 var startTime = Date.now();
-
 console.table(questions);
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
 function updateQuestion() {
     if (currentQuestionIndex < questions.length) {
@@ -56,54 +61,59 @@ function updateQuestion() {
         var answersList = document.getElementById("answers-list");
         answersList.innerHTML = "";
 
-        for (var i = 1; i <= 4; i++) {
-            var answer = question['option' + i];
-            if (answer) {
-                var answerButton = document.createElement("button");
-                answerButton.type = "button";
-                answerButton.className = "btn btn-outline-primary w-100 mb-2";
-                answerButton.innerText = answer;
-                answerButton.style.cssText = "height: 50px; font-size: 1rem; border-radius: 10px; transition: all 0.3s ease;";
-                answerButton.onclick = function() {
-                    var buttons = document.querySelectorAll("#answers-list button");
-                    var correctAnswer = question['option' + question.correct_option];
-                    var difficulty = question.difficulty;
-                    var isCorrect = this.innerText === correctAnswer;
-                    var responseTime = Math.floor((Date.now() - startTime) / 1000);
-                    buttons.forEach(function(button) {
-                        if (button.innerText === correctAnswer) {
-                            button.style.backgroundColor = "green";
-                            button.style.color = "white";
-                        } else {
-                            button.style.backgroundColor = "red";
-                            button.style.color = "white";
-                        }
-                        button.disabled = true;
-                    });
-                    saveResponse(isCorrect, responseTime, difficulty);
-                    setTimeout(function() {
-                        currentQuestionIndex++;
-                        if (currentQuestionIndex < questions.length) {
-                            updateQuestion();
-                            timeLeft = 180;
-                            startTime = Date.now();
-                        } else {
-                            clearInterval(countdown);
-                            timerElement.innerText = "Fim das perguntas!";
-                        }
-                    }, 2000);
-                };
-                var colDiv = document.createElement("div");
-                colDiv.className = "col-md-6 mb-2";
-                colDiv.appendChild(answerButton);
-                answersList.appendChild(colDiv);
-            }
-        }
+        var answers = [
+            { text: question.option1, isCorrect: question.correct_option == 1 },
+            { text: question.option2, isCorrect: question.correct_option == 2 },
+            { text: question.option3, isCorrect: question.correct_option == 3 },
+            { text: question.option4, isCorrect: question.correct_option == 4 }
+        ];
+
+        shuffle(answers);
+
+        answers.forEach(function(answer) {
+            var answerButton = document.createElement("button");
+            answerButton.type = "button";
+            answerButton.className = "btn btn-outline-primary w-100 mb-2";
+            answerButton.innerText = answer.text;
+            answerButton.style.cssText = "height: 50px; font-size: 1rem; border-radius: 10px; transition: all 0.3s ease;";
+            answerButton.onclick = function() {
+                var buttons = document.querySelectorAll("#answers-list button");
+                var correctAnswer = answers.find(a => a.isCorrect).text;
+                var difficulty = question.difficulty;
+                var isCorrect = this.innerText === correctAnswer;
+                var responseTime = Math.floor((Date.now() - startTime) / 1000);
+                buttons.forEach(function(button) {
+                    if (button.innerText === correctAnswer) {
+                        button.style.backgroundColor = "green";
+                        button.style.color = "white";
+                    } else {
+                        button.style.backgroundColor = "red";
+                        button.style.color = "white";
+                    }
+                    button.disabled = true;
+                });
+                saveResponse(isCorrect, responseTime, difficulty, {{phase.id}});
+                setTimeout(function() {
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex < questions.length) {
+                        updateQuestion();
+                    } else {
+                        clearInterval(countdown);
+                        timerElement.innerText = "Fim das perguntas!";
+                    }
+                }, 2000);
+            };
+            var colDiv = document.createElement("div");
+            colDiv.className = "col-md-6 mb-2";
+            colDiv.appendChild(answerButton);
+            answersList.appendChild(colDiv);
+        });
+
         document.getElementById("question-counter").innerText = currentQuestionIndex + 1;
     }
 }
 
-function saveResponse(isCorrect, responseTime, difficulty) {
+function saveResponse(isCorrect, responseTime, difficulty, phaseId) {
     fetch('/save-response', {
         method: 'POST',
         headers: {
@@ -114,7 +124,8 @@ function saveResponse(isCorrect, responseTime, difficulty) {
             question_id: questions[currentQuestionIndex].id,
             is_correct: isCorrect,
             response_time: responseTime,
-            question_difficulty: difficulty
+            question_difficulty: difficulty,
+            phase_id: phaseId
         })
     })
     .then(response => response.json())
@@ -129,8 +140,8 @@ function saveResponse(isCorrect, responseTime, difficulty) {
 
 var countdown = setInterval(function() {
     if (timeLeft <= 0) {
-        alert("Fim do tempo! Tente novamente.");
-        timeLeft = 180;
+        clearInterval(countdown);
+        alert("Fim do tempo! Redirecionando para o resultado.");
     } else {
         timerElement.textContent = timeLeft;
     }

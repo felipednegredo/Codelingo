@@ -57,6 +57,7 @@ class Enrollment(models.Model):
 class TrailPhases(models.Model):
     trail = models.ForeignKey(Trail, on_delete=models.CASCADE, default=1)
     phase = models.ForeignKey(Phase, on_delete=models.CASCADE, default=1)
+    unlocked = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.trail} - {self.phase}'
@@ -70,9 +71,10 @@ class PhaseQuestions(models.Model):
 
 class UserResponse(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     is_correct = models.BooleanField()
-    questionDifficulty = models.CharField(max_length=255)
+    question_difficulty = models.CharField(max_length=255)
     response_time = models.IntegerField()
 
 
@@ -80,6 +82,7 @@ class CompletedPhases(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='completed_phases')
     phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
     completed_at = models.DateTimeField(auto_now_add=True)
+    score = models.IntegerField()
     time_spent = models.IntegerField()
 
     class Meta:

@@ -10,8 +10,11 @@ from django.db import IntegrityError
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
+from numpy.ma.core import multiply
+
 from .decorators import professor_required, aluno_required
-from .models import Question, Trail, Phase, PhaseQuestions, Enrollment, UserResponse, CompletedPhases, TrailPhases
+from .models import Question, Trail, Phase, PhaseQuestions, Enrollment, UserResponse, CompletedPhases, TrailPhases, \
+    CustomUser
 from .forms import ProfessorSignUpForm, AlunoSignUpForm, QuestionForm
 from django.template.loader import render_to_string
 from reportlab.pdfgen import canvas
@@ -54,8 +57,7 @@ def home_aluno(request):
         'title': 'Home',
         'trails': trails_data,
         'buttons': [
-            {'name': 'Ranking', 'link': '/ranking'},
-            {'name': 'Progresso', 'link': '/progresso'}
+            {'name': 'Ranking', 'link': '/ranking'}
         ]
     }
     return render(request, 'home.html', context)
@@ -205,40 +207,43 @@ def cadastro_aluno(request):
 @login_required(login_url='/login')
 @aluno_required
 def ranking(request):
+    ranking = []
+    for user in CustomUser.objects.filter(is_student=True):
+        completed_phases = CompletedPhases.objects.filter(user=user)
+        total_score = sum(phase.score for phase in completed_phases)
+        ranking.append({
+            'name': user.get_full_name(),
+            'score': total_score,
+            'id': user.id
+        })
     context = {
         'title': 'Ranking',
-        'ranking': [
-            {'name': 'Aluno 1', 'score': 100, 'id': 1},
-            {'name': 'Aluno 2', 'score': 90, 'id': 2},
-            {'name': 'Aluno 3', 'score': 80, 'id': 3},
-            {'name': 'Aluno 4', 'score': 70, 'id': 4},
-            {'name': 'Aluno 5', 'score': 60, 'id': 5},
-            {'name': 'Aluno 6', 'score': 50, 'id': 6},
-            {'name': 'Aluno 7', 'score': 40, 'id': 7},
-            {'name': 'Aluno 8', 'score': 30, 'id': 8},
-            {'name': 'Aluno 9', 'score': 20, 'id': 9},
-            {'name': 'Aluno 10', 'score': 10, 'id': 10},
-        ],
+        'ranking': ranking,
         'buttons': [
-            {'name': 'Progresso', 'link': '/progresso'},
             {'name': 'Home', 'link': '/home-aluno'}
         ]
     }
     return render(request, 'ranking.html', context)
 
+@login_required(login_url='/login')
+@aluno_required
 def acessar_trilha(request, trail_id):
     try:
         trail = Trail.objects.get(id=trail_id)
         phases = Phase.objects.filter(trailphases__trail=trail).order_by('id')
-        completed_phases = set(request.user.completedphases_set.values_list('phase_id', flat=True))
+        completed_phases = CompletedPhases.objects.filter(user=request.user, phase__trailphases__trail=trail)
 
         phases_data = []
-        for phase in phases:
+        for index, phase in enumerate(phases):
+            trail_phase = TrailPhases.objects.get(trail=trail, phase=phase)
+            if index == 0:
+                trail_phase.unlocked = True
+                trail_phase.save()
             phases_data.append({
                 'id': phase.id,
                 'name': phase.name,
                 'description': phase.description,
-                'unlocked': phase.id in completed_phases or not phases_data
+                'unlocked': trail_phase.unlocked,
             })
 
         context = {
@@ -256,22 +261,26 @@ def acessar_trilha(request, trail_id):
 @login_required(login_url='/login')
 @professor_required
 def relatorio(request):
-    trails = Trail.objects.filter(professor=request.user)
+    Trilhas = Trail.objects.all()
     alunos_data = []
 
-    for trail in trails:
-        enrollments = Enrollment.objects.filter(trail=trail)
-        for enrollment in enrollments:
-            aluno = enrollment.user
-            responses = UserResponse.objects.filter(user=aluno, question__phasequestions__phase__trailphases__trail=trail)
-            alunos_data.append({
-                'id': aluno.id,
-                'name': aluno.get_full_name(),
-                'trail': trail.name,
-                'responses': responses,
-                'total_score': sum(response.is_correct for response in responses),
-                'total_time': sum(response.response_time for response in responses)
-            })
+    for aluno in CustomUser.objects.filter(is_student=True):
+        completed_phases = CompletedPhases.objects.filter(user=aluno)
+        total_score = sum(phase.score for phase in completed_phases)
+        total_time = sum(phase.time_spent for phase in completed_phases)
+        aluno_data = {
+            'id': aluno.id,
+            'name': aluno.get_full_name(),
+            'trail': '',
+            'total_score': total_score,
+            'total_time': total_time
+        }
+        for trail in Trilhas:
+            if Enrollment.objects.filter(user=aluno, trail=trail).exists():
+                aluno_data['trail'] = ', '.join([trail.name for trail in Trilhas if Enrollment.objects.filter(user=aluno, trail=trail).exists()])
+                break
+        alunos_data.append(aluno_data)
+
 
     if request.method == 'POST':
         selected_alunos = request.POST.getlist('alunos')
@@ -376,15 +385,12 @@ def cadastro_trilha(request):
                             return redirect('cadastro_trilha')
                 phases.append(phase)
 
-        else:  # Aleatório (Random mode)
-            difficulty_mapping = {
-                'Iniciante': 'easy',
-                'Intermediário': 'medium',
-                'Avançado': 'hard'
-            }
+        else:
             if difficulty_level:
-                questions = list(Question.objects.filter(difficulty=difficulty_mapping[difficulty_level]))
+                print(f'Selected difficulty level: {difficulty_level}')
+                questions = list(Question.objects.filter(difficulty=difficulty_level).values('id', 'question_text'))
                 random.shuffle(questions)
+                print(f'Fetched {len(questions)} questions for difficulty {difficulty_level}')
                 for phase_number in range(1, 6):
                     phase = questions[(phase_number-1)*4:phase_number*4]
                     phases.append(phase)
@@ -399,6 +405,7 @@ def cadastro_trilha(request):
             TrailPhases.objects.create(trail=trail, phase=phase)
             for question in phase_questions:
                 if question:  # Verifique se a questão não é nula
+                    question = Question.objects.get(id=question['id'])
                     PhaseQuestions.objects.create(phase=phase, question=question)
 
         messages.success(request, 'Trilha cadastrada com sucesso.')
@@ -462,6 +469,7 @@ def participar_trilha(request, trail_id):
 def acessar_fase(request, phase_id):
     phase = get_object_or_404(Phase, id=phase_id)
     questions = PhaseQuestions.objects.filter(phase=phase).select_related('question')
+    UserResponse.objects.filter(user=request.user, phase=phase_id).delete()
     questions_data = []
 
     for pq in questions:
@@ -492,6 +500,7 @@ def check_question_exists(request):
     exists = Question.objects.filter(question_text=question_text).exists()
     return JsonResponse({'exists': exists})
 
+
 @csrf_exempt
 def save_response(request):
     if request.method == 'POST':
@@ -501,26 +510,62 @@ def save_response(request):
             is_correct = data['is_correct']
             response_time = data['response_time']
             question_difficulty = data['question_difficulty']
+            phase_id = data['phase_id']
+            phase = Phase.objects.get(id=phase_id)
+
             user_response = UserResponse.objects.create(
                 user=request.user,
                 question=question,
                 is_correct=is_correct,
                 response_time=response_time,
-                question_difficulty=question_difficulty
+                question_difficulty=question_difficulty,
+                phase=phase
             )
+            print(f'Saved response for question {question.id} in phase {phase_id} for user {request.user.id}')
+
+            CompletedPhases.objects.filter(user=request.user.id, phase=phase_id).delete()
 
             # Check if all questions in the phase are answered
-            phase = question.phasequestions_set.first().phase
             total_questions = phase.phasequestions_set.count()
-            answered_questions = UserResponse.objects.filter(user=request.user, question__phasequestions__phase=phase).count()
+            answered_questions = UserResponse.objects.filter(user=request.user.id,
+                                                             question__phasequestions__phase=phase, phase=phase_id).count()
+            print(f'Answered {answered_questions} out of {total_questions} questions in phase {phase_id}')
 
             if answered_questions == total_questions:
-                CompletedPhases.objects.create(user=request.user, phase=phase)
-                # Unlock the next phase
-                next_phase = Phase.objects.filter(trailphases__trail=phase.trailphases_set.first().trail, id__gt=phase.id).first()
-                if next_phase:
-                    # Logic to unlock the next phase (e.g., notify the user)
-                    pass
+                print(f'All questions in phase {phase_id} are answered')
+
+                # Calcula a dificuldade da pergunta e a pontuação do usuário
+                total_score = 0
+
+                for response in UserResponse.objects.filter(user=request.user.id, question__phasequestions__phase=phase):
+                    if response.is_correct:
+                        multiplier = 0
+                        difficulty = response.question_difficulty
+                        if difficulty == "Iniciante":
+                            multiplier = 0.2
+                        elif difficulty == "Intermediário":
+                            multiplier = 0.5
+                        elif difficulty == "Avançado":
+                            multiplier = 1.5
+
+                        total_score += 1 * multiplier
+
+
+                CompletedPhases.objects.create(
+                    user=request.user,
+                    phase=phase,
+                    time_spent=sum(response.response_time for response in
+                                   UserResponse.objects.filter(user=request.user.id, phase=phase)),
+                    score=total_score
+                )
+
+                # Desbloqueia a próxima fase
+                print(f'Unlocking the first phase where unlocked is False for user {request.user.id}')
+                next_trail_phase = TrailPhases.objects.filter(trail=phase.trailphases_set.first().trail,
+                                                              unlocked=False).order_by('id').first()
+                if next_trail_phase:
+                    next_trail_phase.unlocked = True
+                    next_trail_phase.save()
 
             return JsonResponse({'status': 'success'})
         except Exception as e:
@@ -530,6 +575,7 @@ def save_response(request):
 
 
 logger = logging.getLogger(__name__)
+
 
 
 def get_random_questions(request, difficulty):
